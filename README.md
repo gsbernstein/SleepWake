@@ -1,50 +1,94 @@
+# SleepWake - OK to Wake Clock
 
-# TypeScript
+A React Native app that works as an "ok to wake" clock for children. The app allows you to set bedtime and wake up times, and provides visual cues with color changes to indicate when it's okay to wake up.
 
-[![CI](https://github.com/microsoft/TypeScript/actions/workflows/ci.yml/badge.svg)](https://github.com/microsoft/TypeScript/actions/workflows/ci.yml)
-[![npm version](https://badge.fury.io/js/typescript.svg)](https://www.npmjs.com/package/typescript)
-[![Downloads](https://img.shields.io/npm/dm/typescript.svg)](https://www.npmjs.com/package/typescript)
-[![OpenSSF Scorecard](https://api.securityscorecards.dev/projects/github.com/microsoft/TypeScript/badge)](https://securityscorecards.dev/viewer/?uri=github.com/microsoft/TypeScript)
+## Features
 
+- Set custom bedtime and wake up times
+- Configurable warning time (default: 15 minutes before wake time)
+- Night light mode
+- Support for custom naps
+- Color changes to indicate status:
+  - Dark during sleep time
+  - Yellow during warning period
+  - Green at wake time
+  - Black when no schedule is active
+- iPad compatible
 
-[TypeScript](https://www.typescriptlang.org/) is a language for application-scale JavaScript. TypeScript adds optional types to JavaScript that support tools for large-scale JavaScript applications for any browser, for any host, on any OS. TypeScript compiles to readable, standards-based JavaScript. Try it out at the [playground](https://www.typescriptlang.org/play/), and stay up to date via [our blog](https://blogs.msdn.microsoft.com/typescript) and [Twitter account](https://twitter.com/typescript).
+## Getting Started
 
-Find others who are using TypeScript at [our community page](https://www.typescriptlang.org/community/).
+### Prerequisites
 
-## Installing
+- Node.js (v14 or newer)
+- npm or yarn
+- Expo CLI
+- iOS Simulator (for iOS development)
+- Android Studio and Android SDK (for Android development)
 
-For the latest stable version:
+### Installation
 
-```bash
-npm install -D typescript
+1. Clone the repository
+2. Install dependencies:
+   ```
+   npm install
+   ```
+   or
+   ```
+   yarn install
+   ```
+
+### Running the App
+
+To start the development server:
+
+```
+npm start
+```
+or
+```
+yarn start
 ```
 
-For our nightly builds:
+This will open the Expo Developer Tools in your browser. From there, you can:
 
-```bash
-npm install -D typescript@next
+- Press `i` to open the app in an iOS simulator
+- Press `a` to open the app in an Android emulator
+- Scan the QR code with the Expo Go app on your physical device
+
+Alternatively, you can run the app directly:
+
+For iOS:
+```
+npm run ios
+```
+or
+```
+yarn ios
 ```
 
-## Contribute
+For Android:
+```
+npm run android
+```
+or
+```
+yarn android
+```
 
-There are many ways to [contribute](https://github.com/microsoft/TypeScript/blob/main/CONTRIBUTING.md) to TypeScript.
-* [Submit bugs](https://github.com/microsoft/TypeScript/issues) and help us verify fixes as they are checked in.
-* Review the [source code changes](https://github.com/microsoft/TypeScript/pulls).
-* Engage with other TypeScript users and developers on [StackOverflow](https://stackoverflow.com/questions/tagged/typescript).
-* Help each other in the [TypeScript Community Discord](https://discord.gg/typescript).
-* Join the [#typescript](https://twitter.com/search?q=%23TypeScript) discussion on Twitter.
-* [Contribute bug fixes](https://github.com/microsoft/TypeScript/blob/main/CONTRIBUTING.md).
+## Usage
 
-This project has adopted the [Microsoft Open Source Code of Conduct](https://opensource.microsoft.com/codeofconduct/). For more information see
-the [Code of Conduct FAQ](https://opensource.microsoft.com/codeofconduct/faq/) or contact [opencode@microsoft.com](mailto:opencode@microsoft.com)
-with any additional questions or comments.
+1. Open the app and tap "Manage Schedules" at the bottom of the screen
+2. Create a new schedule by filling in the form:
+   - Name: Give your schedule a name (e.g., "Bedtime", "Nap Time")
+   - Bedtime: Set the bedtime (HH:mm format)
+   - Wake Time: Set the wake time (HH:mm format)
+   - Warning Time: Set how many minutes before wake time the warning should start
+   - Night Light: Toggle night light mode
+   - Is Nap: Toggle if this is a nap schedule
+3. Save the schedule
+4. Activate the schedule by tapping the "Activate" button
+5. Return to the clock screen to see the active schedule
 
-## Documentation
+## License
 
-*  [TypeScript in 5 minutes](https://www.typescriptlang.org/docs/handbook/typescript-in-5-minutes.html)
-*  [Programming handbook](https://www.typescriptlang.org/docs/handbook/intro.html)
-*  [Homepage](https://www.typescriptlang.org/)
-
-## Roadmap
-
-For details on our planned features and future direction, please refer to our [roadmap](https://github.com/microsoft/TypeScript/wiki/Roadmap).
+This project is licensed under the MIT License - see the LICENSE file for details.
