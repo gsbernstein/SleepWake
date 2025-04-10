@@ -34,6 +34,10 @@ yarn-error.*
 # typescript
 *.tsbuildinfo
 
+# TypeScript compiler files
+lib/
+bin/
+
 app-example
 
 # OSX
