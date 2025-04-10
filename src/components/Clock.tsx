@@ -11,7 +11,9 @@ import {
   Animated as RNAnimated,
   PanResponder,
   StatusBar,
-  ScrollView
+  ScrollView,
+  LayoutAnimation,
+  UIManager
 } from 'react-native';
 import Animated, { 
   useAnimatedStyle, 
@@ -23,6 +25,7 @@ import { useSchedule } from '../context/ScheduleContext';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { format, parse, differenceInMinutes, differenceInHours, addMinutes } from 'date-fns';
 import { NativeDurationPicker } from './NativeDurationPicker';
+import { Picker } from '@react-native-picker/picker';
 
 const NIGHT_LIGHT_COLORS = [
   { name: 'Purple', value: '#8A2BE2' },
@@ -72,6 +75,26 @@ export const Clock: React.FC = () => {
 
   // Store background color in a shared value for smooth animations
   const backgroundColor = useSharedValue(STATUS_COLORS.off);
+
+  // Track which picker is currently expanded
+  const [expandedPicker, setExpandedPicker] = useState<
+    'bedtime' | 'waketime' | 'quietTime' | 'napDuration' | null
+  >(null);
+
+  // Enable layout animations for smooth expanding/collapsing
+  useEffect(() => {
+    if (Platform.OS === 'android') {
+      if (UIManager.setLayoutAnimationEnabledExperimental) {
+        UIManager.setLayoutAnimationEnabledExperimental(true);
+      }
+    }
+  }, []);
+
+  // Toggle a picker's expanded state
+  const togglePicker = (pickerName: 'bedtime' | 'waketime' | 'quietTime' | 'napDuration' | null) => {
+    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+    setExpandedPicker(expandedPicker === pickerName ? null : pickerName);
+  };
 
   // Calculate estimated nap end time
   const napEndTime = React.useMemo(() => {
@@ -262,6 +285,217 @@ export const Clock: React.FC = () => {
     return `${minutes}m`;
   };
 
+  // Inline time picker component
+  const renderInlineTimePicker = (type: 'bedtime' | 'waketime') => {
+    const timeValue = parse(
+      type === 'bedtime' ? schedule.bedtime : schedule.wakeTime,
+      'HH:mm',
+      new Date()
+    );
+    
+    const hours = parseInt(format(timeValue, 'h'));
+    const minutes = parseInt(format(timeValue, 'mm'));
+    const period = format(timeValue, 'a');
+    
+    const handleHourChange = (value: string) => {
+      const hourValue = parseInt(value);
+      const newHour = period === 'PM' && hourValue < 12 ? hourValue + 12 : 
+                      period === 'AM' && hourValue === 12 ? 0 : hourValue;
+      
+      const newDate = new Date(timeValue);
+      newDate.setHours(newHour);
+      
+      const timeString = format(newDate, 'HH:mm');
+      updateSchedule({ [type]: timeString });
+    };
+    
+    const handleMinuteChange = (value: string) => {
+      const minuteValue = parseInt(value);
+      const newDate = new Date(timeValue);
+      newDate.setMinutes(minuteValue);
+      
+      const timeString = format(newDate, 'HH:mm');
+      updateSchedule({ [type]: timeString });
+    };
+    
+    const handlePeriodChange = (value: string) => {
+      let hourValue = parseInt(format(timeValue, 'H'));
+      
+      if (value === 'AM' && hourValue >= 12) {
+        hourValue -= 12;
+      } else if (value === 'PM' && hourValue < 12) {
+        hourValue += 12;
+      }
+      
+      const newDate = new Date(timeValue);
+      newDate.setHours(hourValue);
+      
+      const timeString = format(newDate, 'HH:mm');
+      updateSchedule({ [type]: timeString });
+    };
+    
+    return (
+      <View style={styles.inlinePickerContainer}>
+        <View style={styles.inlinePickerRow}>
+          <View style={styles.inlinePickerColumn}>
+            <Text style={styles.inlinePickerLabel}>Hour</Text>
+            <View style={styles.inlinePickerWrapper}>
+              <Picker
+                selectedValue={hours.toString()}
+                onValueChange={handleHourChange}
+                style={styles.inlinePicker}
+                itemStyle={styles.inlinePickerItem}
+              >
+                {[12, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11].map(h => (
+                  <Picker.Item key={h} label={h.toString()} value={h.toString()} />
+                ))}
+              </Picker>
+            </View>
+          </View>
+          
+          <View style={styles.inlinePickerColumn}>
+            <Text style={styles.inlinePickerLabel}>Minute</Text>
+            <View style={styles.inlinePickerWrapper}>
+              <Picker
+                selectedValue={minutes.toString()}
+                onValueChange={handleMinuteChange}
+                style={styles.inlinePicker}
+                itemStyle={styles.inlinePickerItem}
+              >
+                {Array.from({ length: 60 }, (_, i) => (
+                  <Picker.Item 
+                    key={i} 
+                    label={i < 10 ? `0${i}` : i.toString()} 
+                    value={i.toString()} 
+                  />
+                ))}
+              </Picker>
+            </View>
+          </View>
+          
+          <View style={styles.inlinePickerColumn}>
+            <Text style={styles.inlinePickerLabel}>AM/PM</Text>
+            <View style={styles.inlinePickerWrapper}>
+              <Picker
+                selectedValue={period}
+                onValueChange={handlePeriodChange}
+                style={styles.inlinePicker}
+                itemStyle={styles.inlinePickerItem}
+              >
+                <Picker.Item label="AM" value="AM" />
+                <Picker.Item label="PM" value="PM" />
+              </Picker>
+            </View>
+          </View>
+        </View>
+        
+        <TouchableOpacity
+          style={styles.inlinePickerDoneButton}
+          onPress={() => togglePicker(null)}
+        >
+          <Text style={styles.inlinePickerDoneButtonText}>Done</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  };
+  
+  // Inline duration picker component
+  const renderInlineDurationPicker = (type: 'quietTime' | 'napDuration') => {
+    const isQuietTime = type === 'quietTime';
+    const currentValue = isQuietTime 
+      ? { 
+          hours: Math.floor(schedule.quietTime / 60), 
+          minutes: schedule.quietTime % 60 
+        }
+      : { 
+          hours: parseInt(napHours) || 0, 
+          minutes: parseInt(napMinutes) || 0 
+        };
+    
+    const maxHours = isQuietTime ? 1 : 24;
+    const minuteStep = isQuietTime ? 1 : 5;
+    const showHours = !isQuietTime;
+    
+    const handleHourChange = (value: string) => {
+      const hourValue = parseInt(value);
+      if (isQuietTime) {
+        const totalMinutes = (hourValue * 60) + currentValue.minutes;
+        updateSchedule({ quietTime: totalMinutes });
+      } else {
+        setNapHours(hourValue.toString());
+        setTempNapHours(hourValue.toString());
+      }
+    };
+    
+    const handleMinuteChange = (value: string) => {
+      const minuteValue = parseInt(value);
+      if (isQuietTime) {
+        const totalMinutes = (currentValue.hours * 60) + minuteValue;
+        updateSchedule({ quietTime: totalMinutes });
+      } else {
+        setNapMinutes(minuteValue.toString());
+        setTempNapMinutes(minuteValue.toString());
+      }
+    };
+    
+    // Generate minute options with appropriate step
+    const minuteOptions = [];
+    for (let i = 0; i <= 59; i += minuteStep) {
+      minuteOptions.push(i);
+    }
+    
+    return (
+      <View style={styles.inlinePickerContainer}>
+        <View style={styles.inlinePickerRow}>
+          {showHours && (
+            <View style={styles.inlinePickerColumn}>
+              <Text style={styles.inlinePickerLabel}>Hours</Text>
+              <View style={styles.inlinePickerWrapper}>
+                <Picker
+                  selectedValue={currentValue.hours.toString()}
+                  onValueChange={handleHourChange}
+                  style={styles.inlinePicker}
+                  itemStyle={styles.inlinePickerItem}
+                >
+                  {Array.from({ length: maxHours + 1 }, (_, i) => (
+                    <Picker.Item key={i} label={i.toString()} value={i.toString()} />
+                  ))}
+                </Picker>
+              </View>
+            </View>
+          )}
+          
+          <View style={styles.inlinePickerColumn}>
+            <Text style={styles.inlinePickerLabel}>Minutes</Text>
+            <View style={styles.inlinePickerWrapper}>
+              <Picker
+                selectedValue={currentValue.minutes.toString()}
+                onValueChange={handleMinuteChange}
+                style={styles.inlinePicker}
+                itemStyle={styles.inlinePickerItem}
+              >
+                {minuteOptions.map(m => (
+                  <Picker.Item 
+                    key={m} 
+                    label={m < 10 ? `0${m}` : m.toString()} 
+                    value={m.toString()} 
+                  />
+                ))}
+              </Picker>
+            </View>
+          </View>
+        </View>
+        
+        <TouchableOpacity
+          style={styles.inlinePickerDoneButton}
+          onPress={() => togglePicker(null)}
+        >
+          <Text style={styles.inlinePickerDoneButtonText}>Done</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  };
+
   return (
     <View style={styles.background}>
     <View style={styles.safeArea}>
@@ -297,35 +531,46 @@ export const Clock: React.FC = () => {
             
             <ScrollView 
               style={styles.settingsScrollView}
-              showsVerticalScrollIndicator={false}
+              showsVerticalScrollIndicator={true}
               contentContainerStyle={styles.settingsScrollContent}
+              nestedScrollEnabled={true}
+              scrollEventThrottle={16}
             >
-              <TouchableOpacity 
-                style={styles.settingButton} 
-                onPress={() => setShowTimePicker('bedtime')}
-              >
-                <Text style={styles.settingText}>
-                  Sleep Time: {format12Hour(schedule.bedtime)}
-                </Text>
-              </TouchableOpacity>
+              <View>
+                <TouchableOpacity 
+                  style={styles.settingButton} 
+                  onPress={() => togglePicker('bedtime')}
+                >
+                  <Text style={styles.settingText}>
+                    Sleep Time: {format12Hour(schedule.bedtime)}
+                  </Text>
+                </TouchableOpacity>
+                {expandedPicker === 'bedtime' && renderInlineTimePicker('bedtime')}
+              </View>
 
-              <TouchableOpacity 
-                style={styles.settingButton} 
-                onPress={() => setShowTimePicker('waketime')}
-              >
-                <Text style={styles.settingText}>
-                  Wake Time: {format12Hour(schedule.wakeTime)}
-                </Text>
-              </TouchableOpacity>
+              <View>
+                <TouchableOpacity 
+                  style={styles.settingButton} 
+                  onPress={() => togglePicker('waketime')}
+                >
+                  <Text style={styles.settingText}>
+                    Wake Time: {format12Hour(schedule.wakeTime)}
+                  </Text>
+                </TouchableOpacity>
+                {expandedPicker === 'waketime' && renderInlineTimePicker('waketime')}
+              </View>
 
-              <TouchableOpacity 
-                style={styles.settingButton} 
-                onPress={() => setShowQuietTimeDurationPicker(true)}
-              >
-                <Text style={styles.settingText}>
-                  Quiet Time: {formatQuietTime()}
-                </Text>
-              </TouchableOpacity>
+              <View>
+                <TouchableOpacity 
+                  style={styles.settingButton} 
+                  onPress={() => togglePicker('quietTime')}
+                >
+                  <Text style={styles.settingText}>
+                    Quiet Time: {formatQuietTime()}
+                  </Text>
+                </TouchableOpacity>
+                {expandedPicker === 'quietTime' && renderInlineDurationPicker('quietTime')}
+              </View>
 
               <View style={styles.settingRow}>
                 <Text style={styles.settingText}>Night Light</Text>
@@ -347,7 +592,7 @@ export const Clock: React.FC = () => {
               <View style={styles.napSettings}>
                 <TouchableOpacity 
                   style={styles.settingButton}
-                  onPress={() => setShowNapDurationPicker(true)}
+                  onPress={() => togglePicker('napDuration')}
                 >
                   <Text style={styles.settingText}>
                     Nap Duration: {napHours}h {napMinutes}m
@@ -358,6 +603,7 @@ export const Clock: React.FC = () => {
                     </Text>
                   ) : null}
                 </TouchableOpacity>
+                {expandedPicker === 'napDuration' && renderInlineDurationPicker('napDuration')}
                 
                 <TouchableOpacity 
                   style={[styles.napButton, isNapActive && styles.cancelNapButton]} 
@@ -380,129 +626,7 @@ export const Clock: React.FC = () => {
         )}
       </Animated.View>
 
-      {/* iOS date picker modals and duration pickers */}
-      {Platform.OS === 'ios' && (
-        <>
-          {showTimePicker && (
-            <Modal
-              animationType="slide"
-              transparent={true}
-              visible={!!showTimePicker}
-              supportedOrientations={['portrait', 'landscape']}
-              presentationStyle="overFullScreen"
-            >
-              <View style={styles.modalContainer}>
-                <View style={[
-                  styles.modalContent,
-                  isLandscape && styles.modalContentLandscape
-                ]}>
-                  <Text style={styles.modalTitle}>
-                    {showTimePicker === 'bedtime' ? 'Set Sleep Time' : 'Set Wake Time'}
-                  </Text>
-                  <View style={styles.datePickerContainer}>
-                    <DateTimePicker
-                      value={parse(
-                        showTimePicker === 'bedtime' 
-                          ? schedule.bedtime
-                          : schedule.wakeTime,
-                        'HH:mm',
-                        new Date()
-                      )}
-                      mode="time"
-                      is24Hour={false}
-                      display="spinner"
-                      onChange={handleTimeChange}
-                      style={styles.datePicker}
-                    />
-                  </View>
-                  <TouchableOpacity
-                    style={styles.modalButton}
-                    onPress={() => setShowTimePicker(null)}
-                  >
-                    <Text style={styles.modalButtonText}>Done</Text>
-                  </TouchableOpacity>
-                </View>
-              </View>
-            </Modal>
-          )}
-
-          <NativeDurationPicker
-            title="Set Quiet Time"
-            visible={showQuietTimeDurationPicker}
-            onClose={() => setShowQuietTimeDurationPicker(false)}
-            value={{ 
-              hours: Math.floor(schedule.quietTime / 60), 
-              minutes: schedule.quietTime % 60 
-            }}
-            onChange={handleQuietTimeChange}
-            showHours={false}
-            maxMinutes={60}
-            minuteStep={1}
-          />
-
-          <NativeDurationPicker
-            title="Set Nap Duration"
-            visible={showNapDurationPicker}
-            onClose={() => setShowNapDurationPicker(false)}
-            value={{ 
-              hours: parseInt(tempNapHours) || 0, 
-              minutes: parseInt(tempNapMinutes) || 0 
-            }}
-            onChange={handleNapDurationChange}
-            maxHours={24}
-            minuteStep={5}
-          />
-        </>
-      )}
-
-      {/* Android date pickers */}
-      {Platform.OS === 'android' && showTimePicker && (
-        <DateTimePicker
-          value={parse(
-            showTimePicker === 'bedtime' 
-              ? schedule.bedtime
-              : schedule.wakeTime,
-            'HH:mm',
-            new Date()
-          )}
-          mode="time"
-          is24Hour={false}
-          display="default"
-          onChange={handleTimeChange}
-        />
-      )}
-
-      {/* Use native duration pickers for Android too */}
-      {Platform.OS === 'android' && (
-        <>
-          <NativeDurationPicker
-            title="Set Quiet Time"
-            visible={showQuietTimeDurationPicker}
-            onClose={() => setShowQuietTimeDurationPicker(false)}
-            value={{ 
-              hours: Math.floor(schedule.quietTime / 60), 
-              minutes: schedule.quietTime % 60 
-            }}
-            onChange={handleQuietTimeChange}
-            showHours={false}
-            maxMinutes={60}
-            minuteStep={1}
-          />
-
-          <NativeDurationPicker
-            title="Set Nap Duration"
-            visible={showNapDurationPicker}
-            onClose={() => setShowNapDurationPicker(false)}
-            value={{ 
-              hours: parseInt(tempNapHours) || 0, 
-              minutes: parseInt(tempNapMinutes) || 0 
-            }}
-            onChange={handleNapDurationChange}
-            maxHours={5}
-            minuteStep={5}
-          />
-        </>
-      )}
+      {/* Remove all the modal pickers since we're using inline ones now */}
     </View>
     </View>
   );
@@ -572,12 +696,12 @@ const styles = StyleSheet.create({
     paddingBottom: Platform.OS === 'ios' ? 50 : 30,
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
-    maxHeight: '80%',
+    maxHeight: '90%',
   },
   settingsContainerLandscape: {
     left: Platform.OS === 'ios' ? '20%' : '10%',
     right: Platform.OS === 'ios' ? '20%' : '10%',
-    maxHeight: '80%',
+    maxHeight: '90%',
   },
   dragHandle: {
     width: 40,
@@ -649,59 +773,66 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: '600',
   },
-  modalContainer: {
+  settingsScrollView: {
+    flexGrow: 0,
+    paddingBottom: 20,
+  },
+  settingsScrollContent: {
+    gap: 15,
+    paddingBottom: 20,
+  },
+  inlinePickerContainer: {
+    backgroundColor: 'rgba(50, 50, 50, 0.9)',
+    borderRadius: 10,
+    padding: 15,
+    paddingBottom: 20,
+    marginTop: 1,
+    marginBottom: 5,
+  },
+  inlinePickerRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    width: '100%',
+  },
+  inlinePickerColumn: {
+    alignItems: 'center',
     flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
   },
-  modalContent: {
-    backgroundColor: '#fff',
-    borderRadius: 20,
-    padding: 20,
-    alignItems: 'center',
-    width: '80%',
-    maxHeight: '80%',
+  inlinePickerLabel: {
+    color: '#ffffff',
+    fontSize: 14,
+    marginBottom: 5,
   },
-  modalContentLandscape: {
-    width: '60%',
-    maxHeight: '90%',
+  inlinePickerWrapper: {
+    width: '90%',
+    height: 180,
+    overflow: 'hidden',
   },
-  modalTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    marginBottom: 20,
+  inlinePicker: {
+    width: '100%',
+    color: '#ffffff',
+    height: 180,
   },
-  modalButton: {
+  inlinePickerItem: {
+    color: '#ffffff',
+    fontSize: 18,
+  },
+  inlinePickerDoneButton: {
     backgroundColor: '#4169E1',
-    paddingVertical: 12,
-    paddingHorizontal: 24,
+    paddingVertical: 10,
+    paddingHorizontal: 15,
     borderRadius: 8,
-    marginTop: 20,
+    alignSelf: 'center',
+    marginTop: 15,
   },
-  modalButtonText: {
-    color: '#fff',
-    fontWeight: 'bold',
+  inlinePickerDoneButtonText: {
+    color: '#ffffff',
     fontSize: 16,
+    fontWeight: 'bold',
   },
   napEndTimeText: {
     color: '#f0f0f0',
     fontSize: 14,
     marginTop: 5,
-  },
-  settingsScrollView: {
-    flexGrow: 0,
-  },
-  settingsScrollContent: {
-    gap: 15,
-  },
-  datePickerContainer: {
-    width: '100%',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  datePicker: {
-    width: '100%',
-    height: 200,
   },
 }); 
