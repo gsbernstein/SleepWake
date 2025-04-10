@@ -697,11 +697,16 @@ const styles = StyleSheet.create({
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
     maxHeight: '90%',
+    alignSelf: 'center',
+    maxWidth: 500,
+    marginHorizontal: 'auto',
   },
   settingsContainerLandscape: {
     left: Platform.OS === 'ios' ? '20%' : '10%',
     right: Platform.OS === 'ios' ? '20%' : '10%',
     maxHeight: '90%',
+    maxWidth: 500,
+    alignSelf: 'center',
   },
   dragHandle: {
     width: 40,
