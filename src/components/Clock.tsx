@@ -17,7 +17,7 @@ import Animated, { useAnimatedStyle } from 'react-native-reanimated';
 import { useClock } from '../hooks/useClock';
 import { useSchedule } from '../context/ScheduleContext';
 import DateTimePicker from '@react-native-community/datetimepicker';
-import { format, parse, differenceInMinutes, differenceInHours } from 'date-fns';
+import { format, parse, differenceInMinutes, differenceInHours, addMinutes } from 'date-fns';
 
 const NIGHT_LIGHT_COLORS = [
   { name: 'Purple', value: '#8A2BE2' },
@@ -44,7 +44,8 @@ export const Clock: React.FC = () => {
     startNap, 
     cancelNap, 
     timeUntilNextEvent,
-    nextEventType
+    nextEventType,
+    currentTime
   } = useClock(schedule);
   const { width, height } = useWindowDimensions();
   const [showTimePicker, setShowTimePicker] = useState<'bedtime' | 'waketime' | null>(null);
@@ -52,8 +53,28 @@ export const Clock: React.FC = () => {
   const [showNapDurationPicker, setShowNapDurationPicker] = useState(false);
   const [napHours, setNapHours] = useState('0');
   const [napMinutes, setNapMinutes] = useState('0');
+  const [tempNapHours, setTempNapHours] = useState('0');
+  const [tempNapMinutes, setTempNapMinutes] = useState('0');
   const [showSettings, setShowSettings] = useState(false);
   const slideAnim = useState(new RNAnimated.Value(height))[0];
+
+  // Calculate estimated nap end time
+  const napEndTime = React.useMemo(() => {
+    const hours = parseInt(napHours) || 0;
+    const minutes = parseInt(napMinutes) || 0;
+    const totalMinutes = (hours * 60) + minutes;
+    
+    if (totalMinutes === 0) return '';
+    
+    const endTime = addMinutes(new Date(), totalMinutes);
+    return format(endTime, 'h:mm a'); // 12-hour format
+  }, [napHours, napMinutes]);
+
+  // Format time to 12-hour format
+  const format12Hour = (time: string) => {
+    const date = parse(time, 'HH:mm', new Date());
+    return format(date, 'h:mm a');
+  };
 
   // Set up pan responder for swipe to dismiss settings
   const panResponder = PanResponder.create({
@@ -89,6 +110,8 @@ export const Clock: React.FC = () => {
     const minutes = schedule.napDuration % 60;
     setNapHours(hours.toString());
     setNapMinutes(minutes.toString());
+    setTempNapHours(hours.toString());
+    setTempNapMinutes(minutes.toString());
   }, []);
 
   const backgroundStyle = useAnimatedStyle(() => {
@@ -102,12 +125,18 @@ export const Clock: React.FC = () => {
   });
 
   const handleTimeChange = (event: any, selectedDate?: Date) => {
-    if (Platform.OS === 'android') {
+    if (Platform.OS === 'android' && event.type === 'set') {
       setShowTimePicker(null);
-      setShowWarningPicker(false);
-    }
-    
-    if (selectedDate) {
+      
+      if (selectedDate) {
+        const timeString = format(selectedDate, 'HH:mm');
+        if (showTimePicker === 'bedtime') {
+          updateSchedule({ bedtime: timeString });
+        } else if (showTimePicker === 'waketime') {
+          updateSchedule({ wakeTime: timeString });
+        }
+      }
+    } else if (Platform.OS === 'ios' && selectedDate) {
       const timeString = format(selectedDate, 'HH:mm');
       if (showTimePicker === 'bedtime') {
         updateSchedule({ bedtime: timeString });
@@ -115,42 +144,46 @@ export const Clock: React.FC = () => {
         updateSchedule({ wakeTime: timeString });
       }
     }
-    
-    if (Platform.OS === 'ios') {
-      setShowTimePicker(null);
-    }
   };
 
   const handleWarningTimeChange = (event: any, selectedDate?: Date) => {
-    if (Platform.OS === 'android') {
+    if (Platform.OS === 'android' && event.type === 'set') {
       setShowWarningPicker(false);
-    }
-    
-    if (selectedDate) {
+      
+      if (selectedDate) {
+        const minutes = selectedDate.getMinutes();
+        updateSchedule({ warningTime: minutes });
+      }
+    } else if (Platform.OS === 'ios' && selectedDate) {
       const minutes = selectedDate.getMinutes();
       updateSchedule({ warningTime: minutes });
-    }
-    
-    if (Platform.OS === 'ios') {
-      setShowWarningPicker(false);
     }
   };
 
   const handleNapDurationChange = (event: any, selectedDate?: Date) => {
-    if (Platform.OS === 'android') {
+    if (Platform.OS === 'android' && event.type === 'set') {
       setShowNapDurationPicker(false);
-    }
-    
-    if (selectedDate) {
+      
+      if (selectedDate) {
+        const hours = selectedDate.getHours();
+        const minutes = selectedDate.getMinutes();
+        setNapHours(hours.toString());
+        setNapMinutes(minutes.toString());
+        setTempNapHours(hours.toString());
+        setTempNapMinutes(minutes.toString());
+      }
+    } else if (Platform.OS === 'ios' && selectedDate) {
       const hours = selectedDate.getHours();
       const minutes = selectedDate.getMinutes();
-      setNapHours(hours.toString());
-      setNapMinutes(minutes.toString());
+      setTempNapHours(hours.toString());
+      setTempNapMinutes(minutes.toString());
     }
-    
-    if (Platform.OS === 'ios') {
-      setShowNapDurationPicker(false);
-    }
+  };
+
+  const saveNapDuration = () => {
+    setNapHours(tempNapHours);
+    setNapMinutes(tempNapMinutes);
+    setShowNapDurationPicker(false);
   };
 
   const toggleNightLight = () => {
@@ -222,11 +255,14 @@ export const Clock: React.FC = () => {
     return `${countdownText} until ${eventText}`;
   };
 
+  // Format the main clock time in 12-hour format
+  const displayTime12Hour = format(parse(displayTime, 'HH:mm', new Date()), 'h:mm a');
+
   return (
     <SafeAreaView style={styles.safeArea}>
       <StatusBar hidden />
       <Animated.View style={[styles.container, backgroundStyle, { width, height }]}>
-        <Text style={styles.time}>{displayTime}</Text>
+        <Text style={styles.time}>{displayTime12Hour}</Text>
         {isNapActive && <Text style={styles.napActiveText}>NAP MODE</Text>}
         
         {timeUntilNextEvent > 0 && (
@@ -259,7 +295,7 @@ export const Clock: React.FC = () => {
               onPress={() => setShowTimePicker('bedtime')}
             >
               <Text style={styles.settingText}>
-                Sleep Time: {schedule.bedtime}
+                Sleep Time: {format12Hour(schedule.bedtime)}
               </Text>
             </TouchableOpacity>
 
@@ -268,7 +304,7 @@ export const Clock: React.FC = () => {
               onPress={() => setShowTimePicker('waketime')}
             >
               <Text style={styles.settingText}>
-                Wake Time: {schedule.wakeTime}
+                Wake Time: {format12Hour(schedule.wakeTime)}
               </Text>
             </TouchableOpacity>
 
@@ -306,6 +342,11 @@ export const Clock: React.FC = () => {
                 <Text style={styles.settingText}>
                   Nap Duration: {napHours}h {napMinutes}m
                 </Text>
+                {napEndTime ? (
+                  <Text style={styles.napEndTimeText}>
+                    Ends at: {napEndTime}
+                  </Text>
+                ) : null}
               </TouchableOpacity>
               
               <TouchableOpacity 
@@ -351,7 +392,7 @@ export const Clock: React.FC = () => {
                       new Date()
                     )}
                     mode="time"
-                    is24Hour={true}
+                    is24Hour={false}
                     display="spinner"
                     onChange={handleTimeChange}
                   />
@@ -378,7 +419,7 @@ export const Clock: React.FC = () => {
                   <DateTimePicker
                     value={new Date(0, 0, 0, 0, schedule.warningTime)}
                     mode="time"
-                    is24Hour={true}
+                    is24Hour={false}
                     display="spinner"
                     onChange={handleWarningTimeChange}
                   />
@@ -402,8 +443,24 @@ export const Clock: React.FC = () => {
               <View style={styles.modalContainer}>
                 <View style={styles.modalContent}>
                   <Text style={styles.modalTitle}>Set Nap Duration</Text>
+                  <Text style={styles.napDurationLabel}>
+                    Duration: {tempNapHours}h {tempNapMinutes}m
+                  </Text>
+                  {tempNapHours !== '0' || tempNapMinutes !== '0' ? (
+                    <Text style={styles.napEndTimeModalText}>
+                      Will end at: {
+                        format(
+                          addMinutes(
+                            new Date(), 
+                            (parseInt(tempNapHours) || 0) * 60 + (parseInt(tempNapMinutes) || 0)
+                          ),
+                          'h:mm a'
+                        )
+                      }
+                    </Text>
+                  ) : null}
                   <DateTimePicker
-                    value={new Date(0, 0, 0, parseInt(napHours) || 0, parseInt(napMinutes) || 0)}
+                    value={new Date(0, 0, 0, parseInt(tempNapHours) || 0, parseInt(tempNapMinutes) || 0)}
                     mode="time"
                     is24Hour={true}
                     display="spinner"
@@ -411,7 +468,7 @@ export const Clock: React.FC = () => {
                   />
                   <TouchableOpacity
                     style={styles.modalButton}
-                    onPress={() => setShowNapDurationPicker(false)}
+                    onPress={saveNapDuration}
                   >
                     <Text style={styles.modalButtonText}>Done</Text>
                   </TouchableOpacity>
@@ -433,7 +490,7 @@ export const Clock: React.FC = () => {
             new Date()
           )}
           mode="time"
-          is24Hour={true}
+          is24Hour={false}
           display="default"
           onChange={handleTimeChange}
         />
@@ -443,7 +500,7 @@ export const Clock: React.FC = () => {
         <DateTimePicker
           value={new Date(0, 0, 0, 0, schedule.warningTime)}
           mode="time"
-          is24Hour={true}
+          is24Hour={false}
           display="default"
           onChange={handleWarningTimeChange}
         />
@@ -508,7 +565,7 @@ const styles = StyleSheet.create({
     right: 0,
     backgroundColor: 'rgba(0, 0, 0, 0.85)',
     padding: 20,
-    paddingBottom: 40,
+    paddingBottom: Platform.OS === 'ios' ? 40 : 20,
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
     alignItems: 'stretch',
@@ -613,5 +670,19 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontWeight: 'bold',
     fontSize: 16,
+  },
+  napEndTimeText: {
+    color: '#f0f0f0',
+    fontSize: 14,
+    marginTop: 5,
+  },
+  napDurationLabel: {
+    fontSize: 18,
+    marginBottom: 5,
+  },
+  napEndTimeModalText: {
+    fontSize: 16,
+    color: '#666',
+    marginBottom: 15,
   },
 }); 

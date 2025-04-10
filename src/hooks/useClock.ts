@@ -130,14 +130,15 @@ export const useClock = (schedule: Schedule) => {
 
   // Format the time as HH:MM for display
   const timeWithoutSeconds = format(currentTime, 'HH:mm');
-  // Format with seconds for internal use
-  const timeWithSeconds = format(currentTime, 'HH:mm:ss');
-
+  
+  // Format with 12-hour time for display
+  const timeWith12Hour = format(currentTime, 'h:mm');
+  
   return {
     currentTime,
     status,
-    formattedTime: timeWithSeconds,
-    displayTime: timeWithoutSeconds,
+    formattedTime: timeWithoutSeconds,
+    displayTime: timeWithoutSeconds,  // Keep this for code compatibility
     isNapActive,
     startNap,
     cancelNap,
