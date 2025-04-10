@@ -48,6 +48,7 @@ export const Clock: React.FC = () => {
     currentTime
   } = useClock(schedule);
   const { width, height } = useWindowDimensions();
+  const isLandscape = width > height;
   const [showTimePicker, setShowTimePicker] = useState<'bedtime' | 'waketime' | null>(null);
   const [showWarningDurationPicker, setShowWarningDurationPicker] = useState(false);
   const [showNapDurationPicker, setShowNapDurationPicker] = useState(false);
@@ -249,8 +250,8 @@ export const Clock: React.FC = () => {
     <View style={styles.safeArea}>
       <StatusBar hidden />
       <Animated.View style={[styles.container, backgroundStyle, { width, height }]}>
-        <Text style={styles.time}>{displayTime12Hour}</Text>
-        {isNapActive && <Text style={styles.napActiveText}>NAP MODE</Text>}
+        <Text style={[styles.time, isLandscape && styles.timeLandscape]}>{displayTime12Hour}</Text>
+        {isNapActive && <Text style={[styles.napActiveText, isLandscape && styles.napActiveTextLandscape]}>NAP MODE</Text>}
         
         {timeUntilNextEvent > 0 && (
           <Text style={styles.countdownText}>{formatCountdown()}</Text>
@@ -258,7 +259,7 @@ export const Clock: React.FC = () => {
         
         {!showSettings && (
           <TouchableOpacity 
-            style={styles.settingsButton}
+            style={[styles.settingsButton, isLandscape && styles.settingsButtonLandscape]}
             onPress={showSettingsPanel}
           >
             <Text style={styles.settingsButtonText}>⚙️ Settings</Text>
@@ -269,6 +270,7 @@ export const Clock: React.FC = () => {
           <RNAnimated.View 
             style={[
               styles.settingsContainer,
+              isLandscape && styles.settingsContainerLandscape,
               {
                 transform: [{ translateY: slideAnim }]
               }
@@ -496,11 +498,19 @@ const styles = StyleSheet.create({
     color: '#ffffff',
     marginBottom: 20,
   },
+  timeLandscape: {
+    fontSize: 72,
+    marginBottom: 10,
+  },
   napActiveText: {
     fontSize: 24,
     fontWeight: 'bold',
     color: '#ffffff',
     marginBottom: 10,
+  },
+  napActiveTextLandscape: {
+    fontSize: 20,
+    marginBottom: 5,
   },
   countdownText: {
     fontSize: 18,
@@ -515,6 +525,9 @@ const styles = StyleSheet.create({
     borderRadius: 30,
     backgroundColor: 'rgba(0, 0, 0, 0.5)',
   },
+  settingsButtonLandscape: {
+    bottom: 20,
+  },
   settingsButtonText: {
     color: '#ffffff',
     fontSize: 16,
@@ -526,11 +539,16 @@ const styles = StyleSheet.create({
     right: 0,
     backgroundColor: 'rgba(0, 0, 0, 0.85)',
     padding: 20,
-    paddingBottom: Platform.OS === 'ios' ? 50 : 30, // Extra padding at bottom to avoid home indicator
+    paddingBottom: Platform.OS === 'ios' ? 50 : 30,
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
     alignItems: 'stretch',
     gap: 15,
+  },
+  settingsContainerLandscape: {
+    left: Platform.OS === 'ios' ? '20%' : '10%',
+    right: Platform.OS === 'ios' ? '20%' : '10%',
+    maxHeight: '80%',
   },
   dragHandle: {
     width: 40,
