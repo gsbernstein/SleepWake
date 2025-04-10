@@ -10,7 +10,8 @@ import {
   Modal, 
   Animated as RNAnimated,
   PanResponder,
-  StatusBar
+  StatusBar,
+  ScrollView
 } from 'react-native';
 import Animated, { useAnimatedStyle } from 'react-native-reanimated';
 import { useClock } from '../hooks/useClock';
@@ -274,85 +275,90 @@ export const Clock: React.FC = () => {
                 transform: [{ translateY: slideAnim }]
               }
             ]}
-            {...panResponder.panHandlers}
           >
-            <View style={styles.dragHandle} />
+            <View style={styles.dragHandle} {...panResponder.panHandlers} />
             
-            <TouchableOpacity 
-              style={styles.settingButton} 
-              onPress={() => setShowTimePicker('bedtime')}
+            <ScrollView 
+              style={styles.settingsScrollView}
+              showsVerticalScrollIndicator={false}
+              contentContainerStyle={styles.settingsScrollContent}
             >
-              <Text style={styles.settingText}>
-                Sleep Time: {format12Hour(schedule.bedtime)}
-              </Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity 
-              style={styles.settingButton} 
-              onPress={() => setShowTimePicker('waketime')}
-            >
-              <Text style={styles.settingText}>
-                Wake Time: {format12Hour(schedule.wakeTime)}
-              </Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity 
-              style={styles.settingButton} 
-              onPress={() => setShowQuietTimeDurationPicker(true)}
-            >
-              <Text style={styles.settingText}>
-                Quiet Time: {formatQuietTime()}
-              </Text>
-            </TouchableOpacity>
-
-            <View style={styles.settingRow}>
-              <Text style={styles.settingText}>Night Light</Text>
-              <View style={styles.nightLightControls}>
-                <TouchableOpacity 
-                  style={[styles.colorPreview, { backgroundColor: schedule.nightLightColor }]}
-                  onPress={cycleNightLightColor}
-                />
-                <Switch
-                  value={schedule.isNightLight}
-                  onValueChange={toggleNightLight}
-                  trackColor={{ false: '#767577', true: '#81b0ff' }}
-                  thumbColor={schedule.isNightLight ? '#f5dd4b' : '#f4f3f4'}
-                  ios_backgroundColor="#3e3e3e"
-                />
-              </View>
-            </View>
-
-            <View style={styles.napSettings}>
               <TouchableOpacity 
-                style={styles.settingButton}
-                onPress={() => setShowNapDurationPicker(true)}
+                style={styles.settingButton} 
+                onPress={() => setShowTimePicker('bedtime')}
               >
                 <Text style={styles.settingText}>
-                  Nap Duration: {napHours}h {napMinutes}m
+                  Sleep Time: {format12Hour(schedule.bedtime)}
                 </Text>
-                {napEndTime ? (
-                  <Text style={styles.napEndTimeText}>
-                    Ends at: {napEndTime}
-                  </Text>
-                ) : null}
               </TouchableOpacity>
+
+              <TouchableOpacity 
+                style={styles.settingButton} 
+                onPress={() => setShowTimePicker('waketime')}
+              >
+                <Text style={styles.settingText}>
+                  Wake Time: {format12Hour(schedule.wakeTime)}
+                </Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity 
+                style={styles.settingButton} 
+                onPress={() => setShowQuietTimeDurationPicker(true)}
+              >
+                <Text style={styles.settingText}>
+                  Quiet Time: {formatQuietTime()}
+                </Text>
+              </TouchableOpacity>
+
+              <View style={styles.settingRow}>
+                <Text style={styles.settingText}>Night Light</Text>
+                <View style={styles.nightLightControls}>
+                  <TouchableOpacity 
+                    style={[styles.colorPreview, { backgroundColor: schedule.nightLightColor }]}
+                    onPress={cycleNightLightColor}
+                  />
+                  <Switch
+                    value={schedule.isNightLight}
+                    onValueChange={toggleNightLight}
+                    trackColor={{ false: '#767577', true: '#81b0ff' }}
+                    thumbColor={schedule.isNightLight ? '#f5dd4b' : '#f4f3f4'}
+                    ios_backgroundColor="#3e3e3e"
+                  />
+                </View>
+              </View>
+
+              <View style={styles.napSettings}>
+                <TouchableOpacity 
+                  style={styles.settingButton}
+                  onPress={() => setShowNapDurationPicker(true)}
+                >
+                  <Text style={styles.settingText}>
+                    Nap Duration: {napHours}h {napMinutes}m
+                  </Text>
+                  {napEndTime ? (
+                    <Text style={styles.napEndTimeText}>
+                      Ends at: {napEndTime}
+                    </Text>
+                  ) : null}
+                </TouchableOpacity>
+                
+                <TouchableOpacity 
+                  style={[styles.napButton, isNapActive && styles.cancelNapButton]} 
+                  onPress={handleNapPress}
+                >
+                  <Text style={styles.napButtonText}>
+                    {isNapActive ? 'Cancel Nap' : 'Start Nap'}
+                  </Text>
+                </TouchableOpacity>
+              </View>
               
               <TouchableOpacity 
-                style={[styles.napButton, isNapActive && styles.cancelNapButton]} 
-                onPress={handleNapPress}
+                style={styles.closeButton}
+                onPress={hideSettings}
               >
-                <Text style={styles.napButtonText}>
-                  {isNapActive ? 'Cancel Nap' : 'Start Nap'}
-                </Text>
+                <Text style={styles.closeButtonText}>Close</Text>
               </TouchableOpacity>
-            </View>
-            
-            <TouchableOpacity 
-              style={styles.closeButton}
-              onPress={hideSettings}
-            >
-              <Text style={styles.closeButtonText}>Close</Text>
-            </TouchableOpacity>
+            </ScrollView>
           </RNAnimated.View>
         )}
       </Animated.View>
@@ -538,11 +544,11 @@ const styles = StyleSheet.create({
     right: 0,
     backgroundColor: 'rgba(0, 0, 0, 0.85)',
     padding: 20,
+    paddingTop: 10,
     paddingBottom: Platform.OS === 'ios' ? 50 : 30,
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
-    alignItems: 'stretch',
-    gap: 15,
+    maxHeight: '80%',
   },
   settingsContainerLandscape: {
     left: Platform.OS === 'ios' ? '20%' : '10%',
@@ -653,5 +659,11 @@ const styles = StyleSheet.create({
     color: '#f0f0f0',
     fontSize: 14,
     marginTop: 5,
+  },
+  settingsScrollView: {
+    flexGrow: 0,
+  },
+  settingsScrollContent: {
+    gap: 15,
   },
 }); 
