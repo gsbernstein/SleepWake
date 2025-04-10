@@ -206,7 +206,20 @@ export const Clock: React.FC = () => {
     }
     countdownText += `${minutes}m`;
     
-    return `${countdownText} until ${nextEventType === 'wake' ? 'wake up' : 'bedtime'}`;
+    let eventText = '';
+    switch (nextEventType) {
+      case 'sleep':
+        eventText = 'bedtime';
+        break;
+      case 'warning':
+        eventText = 'warning window';
+        break;
+      case 'wake':
+        eventText = 'wake up';
+        break;
+    }
+    
+    return `${countdownText} until ${eventText}`;
   };
 
   return (
