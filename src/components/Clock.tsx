@@ -22,9 +22,7 @@ import Animated, {
 } from 'react-native-reanimated';
 import { useClock } from '../hooks/useClock';
 import { useSchedule } from '../context/ScheduleContext';
-import DateTimePicker from '@react-native-community/datetimepicker';
-import { format, parse, differenceInMinutes, differenceInHours, addMinutes } from 'date-fns';
-import { NativeDurationPicker } from './NativeDurationPicker';
+import { format, parse, addMinutes } from 'date-fns';
 import { Picker } from '@react-native-picker/picker';
 
 const NIGHT_LIGHT_COLORS = [
@@ -299,39 +297,69 @@ export const Clock: React.FC = () => {
     
     const handleHourChange = (value: string) => {
       const hourValue = parseInt(value);
-      const newHour = period === 'PM' && hourValue < 12 ? hourValue + 12 : 
-                      period === 'AM' && hourValue === 12 ? 0 : hourValue;
+      let newHour = hourValue;
       
-      const newDate = new Date(timeValue);
+      // Convert 12-hour format to 24-hour
+      if (period === 'PM' && hourValue < 12) {
+        newHour = hourValue + 12;
+      } else if (period === 'AM' && hourValue === 12) {
+        newHour = 0;
+      }
+      
+      // Create a new date and set hours
+      const newDate = new Date();
       newDate.setHours(newHour);
+      newDate.setMinutes(minutes);
       
       const timeString = format(newDate, 'HH:mm');
-      updateSchedule({ [type]: timeString });
+      if (type === 'bedtime') {
+        updateSchedule({ bedtime: timeString });
+      } else {
+        updateSchedule({ wakeTime: timeString });
+      }
     };
     
     const handleMinuteChange = (value: string) => {
       const minuteValue = parseInt(value);
-      const newDate = new Date(timeValue);
+      
+      // Get current hour in 24-hour format
+      let hourValue = parseInt(format(timeValue, 'H'));
+      
+      // Create a new date and set minutes
+      const newDate = new Date();
+      newDate.setHours(hourValue);
       newDate.setMinutes(minuteValue);
       
       const timeString = format(newDate, 'HH:mm');
-      updateSchedule({ [type]: timeString });
+      if (type === 'bedtime') {
+        updateSchedule({ bedtime: timeString });
+      } else {
+        updateSchedule({ wakeTime: timeString });
+      }
     };
     
     const handlePeriodChange = (value: string) => {
       let hourValue = parseInt(format(timeValue, 'H'));
+      let newHour = hourValue;
       
+      // Handle AM/PM switch
       if (value === 'AM' && hourValue >= 12) {
-        hourValue -= 12;
+        newHour = hourValue - 12;
       } else if (value === 'PM' && hourValue < 12) {
-        hourValue += 12;
+        newHour = hourValue + 12;
       }
       
-      const newDate = new Date(timeValue);
-      newDate.setHours(hourValue);
+      // Create a new date and set hours
+      const newDate = new Date();
+      newDate.setHours(newHour);
+      newDate.setMinutes(minutes);
       
       const timeString = format(newDate, 'HH:mm');
-      updateSchedule({ [type]: timeString });
+      if (type === 'bedtime') {
+        updateSchedule({ bedtime: timeString });
+      } else {
+        updateSchedule({ wakeTime: timeString });
+      }
     };
     
     return (
