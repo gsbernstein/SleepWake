@@ -1,13 +1,15 @@
 import React from 'react';
-import { View, Text, StyleSheet, useWindowDimensions, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, useWindowDimensions, TouchableOpacity, Dimensions } from 'react-native';
 import { useClock } from '../hooks/useClock';
 import { useSchedule } from '../context/ScheduleContext';
 import { useNavigation } from '@react-navigation/native';
 import { NavigationProp } from '../types/navigation';
 
-const getBackgroundColor = (status: 'sleep' | 'warning' | 'wake' | 'off', isNightLight: boolean) => {
-  if (isNightLight) {
-    return '#8A2BE2'; // Purple night light color
+const isTablet = Dimensions.get('window').width >= 768;
+
+const getBackgroundColor = (status: 'sleep' | 'warning' | 'wake' | 'off', isNightLight: boolean, nightLightColor?: string) => {
+  if (isNightLight && nightLightColor) {
+    return nightLightColor;
   }
   
   switch (status) {
@@ -34,7 +36,7 @@ export const Clock: React.FC = () => {
       style={[
         styles.container,
         {
-          backgroundColor: getBackgroundColor(status, activeSchedule?.isNightLight || false),
+          backgroundColor: getBackgroundColor(status, activeSchedule?.isNightLight || false, activeSchedule?.nightLightColor),
           width,
           height,
         },
@@ -46,7 +48,10 @@ export const Clock: React.FC = () => {
       )}
       
       <TouchableOpacity 
-        style={styles.settingsButton}
+        style={[
+          styles.settingsButton,
+          isTablet && styles.settingsButtonTablet
+        ]}
         onPress={() => navigation.navigate('Schedules')}
       >
         <Text style={styles.settingsButtonText}>Manage Schedules</Text>
@@ -78,6 +83,12 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingVertical: 10,
     borderRadius: 20,
+  },
+  settingsButtonTablet: {
+    top: 20,
+    bottom: 'auto',
+    right: 20,
+    left: 'auto',
   },
   settingsButtonText: {
     color: '#ffffff',

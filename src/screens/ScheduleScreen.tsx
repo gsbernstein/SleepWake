@@ -8,9 +8,12 @@ import {
   ScrollView,
   Switch,
   Modal,
+  Dimensions,
 } from 'react-native';
 import { useSchedule } from '../context/ScheduleContext';
 import { Schedule } from '../types/schedule';
+
+const isTablet = Dimensions.get('window').width >= 768;
 
 const NIGHT_LIGHT_COLORS = [
   { name: 'Purple', value: '#8A2BE2' },
@@ -58,108 +61,110 @@ export const ScheduleScreen: React.FC = () => {
   };
 
   return (
-    <ScrollView style={styles.container}>
-      <View style={styles.form}>
-        <Text style={styles.title}>Add New Schedule</Text>
-        <TextInput
-          style={styles.input}
-          placeholder="Schedule Name"
-          value={newSchedule.name}
-          onChangeText={(text) => setNewSchedule({ ...newSchedule, name: text })}
-        />
-        <TextInput
-          style={styles.input}
-          placeholder="Bedtime (HH:mm)"
-          value={newSchedule.bedtime}
-          onChangeText={(text) => setNewSchedule({ ...newSchedule, bedtime: text })}
-        />
-        <TextInput
-          style={styles.input}
-          placeholder="Wake Time (HH:mm)"
-          value={newSchedule.wakeTime}
-          onChangeText={(text) => setNewSchedule({ ...newSchedule, wakeTime: text })}
-        />
-        <TextInput
-          style={styles.input}
-          placeholder="Warning Time (minutes)"
-          value={newSchedule.warningTime?.toString()}
-          onChangeText={(text) => setNewSchedule({ ...newSchedule, warningTime: parseInt(text) || 15 })}
-          keyboardType="numeric"
-        />
-        
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Night Light</Text>
-          <View style={styles.switchContainer}>
-            <Text>Enable Night Light</Text>
-            <Switch
-              value={newSchedule.isNightLight}
-              onValueChange={(value) => setNewSchedule({ ...newSchedule, isNightLight: value })}
-            />
-          </View>
+    <View style={styles.container}>
+      <ScrollView style={styles.scrollView}>
+        <View style={styles.form}>
+          <Text style={styles.title}>Add New Schedule</Text>
+          <TextInput
+            style={styles.input}
+            placeholder="Schedule Name"
+            value={newSchedule.name}
+            onChangeText={(text) => setNewSchedule({ ...newSchedule, name: text })}
+          />
+          <TextInput
+            style={styles.input}
+            placeholder="Bedtime (HH:mm)"
+            value={newSchedule.bedtime}
+            onChangeText={(text) => setNewSchedule({ ...newSchedule, bedtime: text })}
+          />
+          <TextInput
+            style={styles.input}
+            placeholder="Wake Time (HH:mm)"
+            value={newSchedule.wakeTime}
+            onChangeText={(text) => setNewSchedule({ ...newSchedule, wakeTime: text })}
+          />
+          <TextInput
+            style={styles.input}
+            placeholder="Warning Time (minutes)"
+            value={newSchedule.warningTime?.toString()}
+            onChangeText={(text) => setNewSchedule({ ...newSchedule, warningTime: parseInt(text) || 15 })}
+            keyboardType="numeric"
+          />
           
-          {newSchedule.isNightLight && (
-            <View style={styles.colorPickerContainer}>
-              <Text style={styles.colorPickerLabel}>Night Light Color:</Text>
-              <TouchableOpacity 
-                style={[styles.colorPreview, { backgroundColor: newSchedule.nightLightColor }]}
-                onPress={() => setColorPickerVisible(true)}
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Night Light</Text>
+            <View style={styles.switchContainer}>
+              <Text>Enable Night Light</Text>
+              <Switch
+                value={newSchedule.isNightLight}
+                onValueChange={(value) => setNewSchedule({ ...newSchedule, isNightLight: value })}
               />
             </View>
-          )}
-        </View>
-        
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Schedule Type</Text>
-          <View style={styles.switchContainer}>
-            <Text>Is Nap</Text>
-            <Switch
-              value={newSchedule.isNap}
-              onValueChange={(value) => setNewSchedule({ ...newSchedule, isNap: value })}
-            />
+            
+            {newSchedule.isNightLight && (
+              <View style={styles.colorPickerContainer}>
+                <Text style={styles.colorPickerLabel}>Night Light Color:</Text>
+                <TouchableOpacity 
+                  style={[styles.colorPreview, { backgroundColor: newSchedule.nightLightColor }]}
+                  onPress={() => setColorPickerVisible(true)}
+                />
+              </View>
+            )}
           </View>
+          
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Schedule Type</Text>
+            <View style={styles.switchContainer}>
+              <Text>Is Nap</Text>
+              <Switch
+                value={newSchedule.isNap}
+                onValueChange={(value) => setNewSchedule({ ...newSchedule, isNap: value })}
+              />
+            </View>
+          </View>
+          
+          <TouchableOpacity style={styles.button} onPress={handleSave}>
+            <Text style={styles.buttonText}>Save Schedule</Text>
+          </TouchableOpacity>
         </View>
-        
-        <TouchableOpacity style={styles.button} onPress={handleSave}>
-          <Text style={styles.buttonText}>Save Schedule</Text>
-        </TouchableOpacity>
-      </View>
 
-      <View style={styles.scheduleList}>
-        <Text style={styles.title}>Existing Schedules</Text>
-        {schedules.map((schedule) => (
-          <View key={schedule.id} style={styles.scheduleItem}>
-            <View>
-              <Text style={styles.scheduleName}>{schedule.name}</Text>
-              <Text>Bedtime: {schedule.bedtime}</Text>
-              <Text>Wake Time: {schedule.wakeTime}</Text>
-              <Text>Warning Time: {schedule.warningTime} minutes</Text>
-              {schedule.isNightLight && (
-                <View style={styles.scheduleDetail}>
-                  <Text>Night Light: </Text>
-                  <View style={[styles.colorIndicator, { backgroundColor: schedule.nightLightColor }]} />
-                </View>
-              )}
-              {schedule.isNap && <Text>Type: Nap</Text>}
+        <View style={styles.scheduleList}>
+          <Text style={styles.title}>Existing Schedules</Text>
+          {schedules.map((schedule) => (
+            <View key={schedule.id} style={styles.scheduleItem}>
+              <View>
+                <Text style={styles.scheduleName}>{schedule.name}</Text>
+                <Text>Bedtime: {schedule.bedtime}</Text>
+                <Text>Wake Time: {schedule.wakeTime}</Text>
+                <Text>Warning Time: {schedule.warningTime} minutes</Text>
+                {schedule.isNightLight && (
+                  <View style={styles.scheduleDetail}>
+                    <Text>Night Light: </Text>
+                    <View style={[styles.colorIndicator, { backgroundColor: schedule.nightLightColor }]} />
+                  </View>
+                )}
+                {schedule.isNap && <Text>Type: Nap</Text>}
+              </View>
+              <View style={styles.scheduleActions}>
+                <TouchableOpacity
+                  style={[styles.actionButton, schedule.isActive && styles.activeButton]}
+                  onPress={() => setActiveSchedule(schedule.id)}
+                >
+                  <Text style={styles.actionButtonText}>
+                    {schedule.isActive ? 'Active' : 'Activate'}
+                  </Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.actionButton, styles.deleteButton]}
+                  onPress={() => deleteSchedule(schedule.id)}
+                >
+                  <Text style={styles.actionButtonText}>Delete</Text>
+                </TouchableOpacity>
+              </View>
             </View>
-            <View style={styles.scheduleActions}>
-              <TouchableOpacity
-                style={[styles.actionButton, schedule.isActive && styles.activeButton]}
-                onPress={() => setActiveSchedule(schedule.id)}
-              >
-                <Text style={styles.actionButtonText}>
-                  {schedule.isActive ? 'Active' : 'Activate'}
-                </Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.actionButton, styles.deleteButton]}
-                onPress={() => deleteSchedule(schedule.id)}
-              >
-                <Text style={styles.actionButtonText}>Delete</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        ))}
-      </View>
+          ))}
+        </View>
+      </ScrollView>
       
       <Modal
         animationType="slide"
@@ -190,7 +195,7 @@ export const ScheduleScreen: React.FC = () => {
           </View>
         </View>
       </Modal>
-    </ScrollView>
+    </View>
   );
 };
 
@@ -198,6 +203,9 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#f5f5f5',
+  },
+  scrollView: {
+    flex: 1,
   },
   form: {
     padding: 20,
