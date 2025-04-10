@@ -22,7 +22,6 @@ import { DurationPicker } from './DurationPicker';
 const NIGHT_LIGHT_COLORS = [
   { name: 'Purple', value: '#8A2BE2' },
   { name: 'Blue', value: '#4169E1' },
-  { name: 'Green', value: '#32CD32' },
   { name: 'Red', value: '#DC143C' },
   { name: 'Orange', value: '#FFA500' },
   { name: 'Pink', value: '#FF69B4' },
