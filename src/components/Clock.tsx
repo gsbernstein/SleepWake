@@ -13,12 +13,17 @@ import {
   StatusBar,
   ScrollView
 } from 'react-native';
-import Animated, { useAnimatedStyle } from 'react-native-reanimated';
+import Animated, { 
+  useAnimatedStyle, 
+  withTiming,
+  useSharedValue
+} from 'react-native-reanimated';
 import { useClock } from '../hooks/useClock';
 import { useSchedule } from '../context/ScheduleContext';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { format, parse, differenceInMinutes, differenceInHours, addMinutes } from 'date-fns';
 import { DurationPicker } from './DurationPicker';
+import { NativeDurationPicker } from './NativeDurationPicker';
 
 const NIGHT_LIGHT_COLORS = [
   { name: 'Purple', value: '#8A2BE2' },
@@ -58,6 +63,9 @@ export const Clock: React.FC = () => {
   const [tempNapMinutes, setTempNapMinutes] = useState('0');
   const [showSettings, setShowSettings] = useState(false);
   const slideAnim = useState(new RNAnimated.Value(height))[0];
+
+  // Store background color in a shared value for smooth animations
+  const backgroundColor = useSharedValue(STATUS_COLORS.off);
 
   // Calculate estimated nap end time
   const napEndTime = React.useMemo(() => {
@@ -115,16 +123,22 @@ export const Clock: React.FC = () => {
     setTempNapMinutes(minutes.toString());
   }, []);
 
-  const backgroundStyle = useAnimatedStyle(() => {
-    const shouldUseNightLight = schedule.isNightLight && 
-      (isNapActive || status === 'sleep');
-      
-    const targetColor = shouldUseNightLight && schedule.nightLightColor
-      ? schedule.nightLightColor
-      : STATUS_COLORS[status];
+  // Update the background color based on status and night light settings
+  useEffect(() => {
+    const isNightTime = status === 'sleep';
+    const shouldUseNightLight = schedule.isNightLight && (isNapActive || isNightTime);
+    const targetColor = shouldUseNightLight ? schedule.nightLightColor : STATUS_COLORS[status];
+    
+    // Smoothly animate to the new color
+    backgroundColor.value = targetColor;
+  }, [status, isNapActive, schedule.isNightLight, schedule.nightLightColor]);
 
+  // Create animated style with smooth transitions
+  const backgroundStyle = useAnimatedStyle(() => {
     return {
-      backgroundColor: targetColor,
+      backgroundColor: withTiming(backgroundColor.value, {
+        duration: 1000, // 1 second transition
+      }),
     };
   });
 
@@ -363,7 +377,7 @@ export const Clock: React.FC = () => {
         )}
       </Animated.View>
 
-      {/* iOS date picker modals */}
+      {/* iOS date picker modals and duration pickers */}
       {Platform.OS === 'ios' && (
         <>
           {showTimePicker && (
@@ -371,25 +385,33 @@ export const Clock: React.FC = () => {
               animationType="slide"
               transparent={true}
               visible={!!showTimePicker}
+              supportedOrientations={['portrait', 'landscape']}
+              presentationStyle="overFullScreen"
             >
               <View style={styles.modalContainer}>
-                <View style={styles.modalContent}>
+                <View style={[
+                  styles.modalContent,
+                  isLandscape && styles.modalContentLandscape
+                ]}>
                   <Text style={styles.modalTitle}>
                     {showTimePicker === 'bedtime' ? 'Set Sleep Time' : 'Set Wake Time'}
                   </Text>
-                  <DateTimePicker
-                    value={parse(
-                      showTimePicker === 'bedtime' 
-                        ? schedule.bedtime
-                        : schedule.wakeTime,
-                      'HH:mm',
-                      new Date()
-                    )}
-                    mode="time"
-                    is24Hour={false}
-                    display="spinner"
-                    onChange={handleTimeChange}
-                  />
+                  <View style={styles.datePickerContainer}>
+                    <DateTimePicker
+                      value={parse(
+                        showTimePicker === 'bedtime' 
+                          ? schedule.bedtime
+                          : schedule.wakeTime,
+                        'HH:mm',
+                        new Date()
+                      )}
+                      mode="time"
+                      is24Hour={false}
+                      display="spinner"
+                      onChange={handleTimeChange}
+                      style={styles.datePicker}
+                    />
+                  </View>
                   <TouchableOpacity
                     style={styles.modalButton}
                     onPress={() => setShowTimePicker(null)}
@@ -401,8 +423,7 @@ export const Clock: React.FC = () => {
             </Modal>
           )}
 
-          {/* Custom Duration Pickers */}
-          <DurationPicker
+          <NativeDurationPicker
             title="Set Quiet Time"
             visible={showQuietTimeDurationPicker}
             onClose={() => setShowQuietTimeDurationPicker(false)}
@@ -416,7 +437,7 @@ export const Clock: React.FC = () => {
             minuteStep={1}
           />
 
-          <DurationPicker
+          <NativeDurationPicker
             title="Set Nap Duration"
             visible={showNapDurationPicker}
             onClose={() => setShowNapDurationPicker(false)}
@@ -448,10 +469,10 @@ export const Clock: React.FC = () => {
         />
       )}
 
-      {/* Use custom duration pickers for Android too */}
+      {/* Use native duration pickers for Android too */}
       {Platform.OS === 'android' && (
         <>
-          <DurationPicker
+          <NativeDurationPicker
             title="Set Quiet Time"
             visible={showQuietTimeDurationPicker}
             onClose={() => setShowQuietTimeDurationPicker(false)}
@@ -465,7 +486,7 @@ export const Clock: React.FC = () => {
             minuteStep={1}
           />
 
-          <DurationPicker
+          <NativeDurationPicker
             title="Set Nap Duration"
             visible={showNapDurationPicker}
             onClose={() => setShowNapDurationPicker(false)}
@@ -637,6 +658,11 @@ const styles = StyleSheet.create({
     padding: 20,
     alignItems: 'center',
     width: '80%',
+    maxHeight: '80%',
+  },
+  modalContentLandscape: {
+    width: '60%',
+    maxHeight: '90%',
   },
   modalTitle: {
     fontSize: 20,
@@ -665,5 +691,14 @@ const styles = StyleSheet.create({
   },
   settingsScrollContent: {
     gap: 15,
+  },
+  datePickerContainer: {
+    width: '100%',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  datePicker: {
+    width: '100%',
+    height: 200,
   },
 }); 
