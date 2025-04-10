@@ -24,7 +24,8 @@ export const useClock = (schedule: Schedule) => {
     const currentTimeStr = format(now, 'HH:mm');
     const bedtime = parse(schedule.bedtime, 'HH:mm', now);
     const wakeTime = parse(schedule.wakeTime, 'HH:mm', now);
-    const warningTime = addMinutes(wakeTime, -schedule.warningTime);
+    const warningTimeMinutes = schedule.warningTime || 15;
+    const warningTime = addMinutes(wakeTime, -warningTimeMinutes);
 
     // Handle overnight schedules
     if (wakeTime < bedtime) {
@@ -38,7 +39,7 @@ export const useClock = (schedule: Schedule) => {
 
     // Check if we're in nap mode
     if (isNapActive && napEndTime) {
-      const warningTimeForNap = addMinutes(napEndTime, -schedule.warningTime);
+      const warningTimeForNap = addMinutes(napEndTime, -warningTimeMinutes);
       
       // Calculate time until nap ends or warning starts
       if (now < warningTimeForNap) {
@@ -106,14 +107,15 @@ export const useClock = (schedule: Schedule) => {
   const startNap = () => {
     if (schedule.napDuration > 0) {
       const endTime = addMinutes(new Date(), schedule.napDuration);
-      const warningTime = addMinutes(endTime, -schedule.warningTime);
+      const warningTimeMinutes = schedule.warningTime || 15;
+      const warningTime = addMinutes(endTime, -warningTimeMinutes);
       setNapEndTime(endTime);
       setIsNapActive(true);
       setStatus('sleep');
       
       // Set countdown to warning time first if it's more than the warning period
-      if (schedule.napDuration > schedule.warningTime) {
-        setTimeUntilNextEvent(schedule.napDuration - schedule.warningTime);
+      if (schedule.napDuration > warningTimeMinutes) {
+        setTimeUntilNextEvent(schedule.napDuration - warningTimeMinutes);
         setNextEventType('warning');
       } else {
         setTimeUntilNextEvent(schedule.napDuration);

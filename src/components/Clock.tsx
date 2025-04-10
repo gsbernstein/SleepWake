@@ -18,6 +18,7 @@ import { useClock } from '../hooks/useClock';
 import { useSchedule } from '../context/ScheduleContext';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { format, parse, differenceInMinutes, differenceInHours, addMinutes } from 'date-fns';
+import { DurationPicker } from './DurationPicker';
 
 const NIGHT_LIGHT_COLORS = [
   { name: 'Purple', value: '#8A2BE2' },
@@ -49,7 +50,7 @@ export const Clock: React.FC = () => {
   } = useClock(schedule);
   const { width, height } = useWindowDimensions();
   const [showTimePicker, setShowTimePicker] = useState<'bedtime' | 'waketime' | null>(null);
-  const [showWarningPicker, setShowWarningPicker] = useState(false);
+  const [showWarningDurationPicker, setShowWarningDurationPicker] = useState(false);
   const [showNapDurationPicker, setShowNapDurationPicker] = useState(false);
   const [napHours, setNapHours] = useState('0');
   const [napMinutes, setNapMinutes] = useState('0');
@@ -68,7 +69,7 @@ export const Clock: React.FC = () => {
     
     const endTime = addMinutes(new Date(), totalMinutes);
     return format(endTime, 'h:mm a'); // 12-hour format
-  }, [napHours, napMinutes]);
+  }, [napHours, napMinutes, currentTime]);
 
   // Format time to 12-hour format
   const format12Hour = (time: string) => {
@@ -115,7 +116,10 @@ export const Clock: React.FC = () => {
   }, []);
 
   const backgroundStyle = useAnimatedStyle(() => {
-    const targetColor = schedule.isNightLight && schedule.nightLightColor
+    const shouldUseNightLight = schedule.isNightLight && 
+      (isNapActive || status === 'sleep');
+      
+    const targetColor = shouldUseNightLight && schedule.nightLightColor
       ? schedule.nightLightColor
       : STATUS_COLORS[status];
 
@@ -146,44 +150,16 @@ export const Clock: React.FC = () => {
     }
   };
 
-  const handleWarningTimeChange = (event: any, selectedDate?: Date) => {
-    if (Platform.OS === 'android' && event.type === 'set') {
-      setShowWarningPicker(false);
-      
-      if (selectedDate) {
-        const minutes = selectedDate.getMinutes();
-        updateSchedule({ warningTime: minutes });
-      }
-    } else if (Platform.OS === 'ios' && selectedDate) {
-      const minutes = selectedDate.getMinutes();
-      updateSchedule({ warningTime: minutes });
-    }
+  const handleWarningTimeChange = (duration: { hours: number, minutes: number }) => {
+    const totalMinutes = (duration.hours * 60) + duration.minutes;
+    updateSchedule({ warningTime: totalMinutes });
   };
 
-  const handleNapDurationChange = (event: any, selectedDate?: Date) => {
-    if (Platform.OS === 'android' && event.type === 'set') {
-      setShowNapDurationPicker(false);
-      
-      if (selectedDate) {
-        const hours = selectedDate.getHours();
-        const minutes = selectedDate.getMinutes();
-        setNapHours(hours.toString());
-        setNapMinutes(minutes.toString());
-        setTempNapHours(hours.toString());
-        setTempNapMinutes(minutes.toString());
-      }
-    } else if (Platform.OS === 'ios' && selectedDate) {
-      const hours = selectedDate.getHours();
-      const minutes = selectedDate.getMinutes();
-      setTempNapHours(hours.toString());
-      setTempNapMinutes(minutes.toString());
-    }
-  };
-
-  const saveNapDuration = () => {
-    setNapHours(tempNapHours);
-    setNapMinutes(tempNapMinutes);
-    setShowNapDurationPicker(false);
+  const handleNapDurationChange = (duration: { hours: number, minutes: number }) => {
+    setNapHours(duration.hours.toString());
+    setNapMinutes(duration.minutes.toString());
+    setTempNapHours(duration.hours.toString());
+    setTempNapMinutes(duration.minutes.toString());
   };
 
   const toggleNightLight = () => {
@@ -258,6 +234,17 @@ export const Clock: React.FC = () => {
   // Format the main clock time in 12-hour format
   const displayTime12Hour = format(parse(displayTime, 'HH:mm', new Date()), 'h:mm a');
 
+  // Format warning time as hours and minutes
+  const formatWarningTime = () => {
+    const hours = Math.floor(schedule.warningTime / 60);
+    const minutes = schedule.warningTime % 60;
+    
+    if (hours > 0) {
+      return `${hours}h ${minutes}m`;
+    }
+    return `${minutes}m`;
+  };
+
   return (
     <SafeAreaView style={styles.safeArea}>
       <StatusBar hidden />
@@ -310,10 +297,10 @@ export const Clock: React.FC = () => {
 
             <TouchableOpacity 
               style={styles.settingButton} 
-              onPress={() => setShowWarningPicker(true)}
+              onPress={() => setShowWarningDurationPicker(true)}
             >
               <Text style={styles.settingText}>
-                Warning: {schedule.warningTime} min
+                Warning: {formatWarningTime()}
               </Text>
             </TouchableOpacity>
 
@@ -407,75 +394,33 @@ export const Clock: React.FC = () => {
             </Modal>
           )}
 
-          {showWarningPicker && (
-            <Modal
-              animationType="slide"
-              transparent={true}
-              visible={showWarningPicker}
-            >
-              <View style={styles.modalContainer}>
-                <View style={styles.modalContent}>
-                  <Text style={styles.modalTitle}>Set Warning Time</Text>
-                  <DateTimePicker
-                    value={new Date(0, 0, 0, 0, schedule.warningTime)}
-                    mode="time"
-                    is24Hour={false}
-                    display="spinner"
-                    onChange={handleWarningTimeChange}
-                  />
-                  <TouchableOpacity
-                    style={styles.modalButton}
-                    onPress={() => setShowWarningPicker(false)}
-                  >
-                    <Text style={styles.modalButtonText}>Done</Text>
-                  </TouchableOpacity>
-                </View>
-              </View>
-            </Modal>
-          )}
+          {/* Custom Duration Pickers */}
+          <DurationPicker
+            title="Set Warning Time"
+            visible={showWarningDurationPicker}
+            onClose={() => setShowWarningDurationPicker(false)}
+            value={{ 
+              hours: Math.floor(schedule.warningTime / 60), 
+              minutes: schedule.warningTime % 60 
+            }}
+            onChange={handleWarningTimeChange}
+            showHours={false}
+            maxMinutes={60}
+            minuteStep={1}
+          />
 
-          {showNapDurationPicker && (
-            <Modal
-              animationType="slide"
-              transparent={true}
-              visible={showNapDurationPicker}
-            >
-              <View style={styles.modalContainer}>
-                <View style={styles.modalContent}>
-                  <Text style={styles.modalTitle}>Set Nap Duration</Text>
-                  <Text style={styles.napDurationLabel}>
-                    Duration: {tempNapHours}h {tempNapMinutes}m
-                  </Text>
-                  {tempNapHours !== '0' || tempNapMinutes !== '0' ? (
-                    <Text style={styles.napEndTimeModalText}>
-                      Will end at: {
-                        format(
-                          addMinutes(
-                            new Date(), 
-                            (parseInt(tempNapHours) || 0) * 60 + (parseInt(tempNapMinutes) || 0)
-                          ),
-                          'h:mm a'
-                        )
-                      }
-                    </Text>
-                  ) : null}
-                  <DateTimePicker
-                    value={new Date(0, 0, 0, parseInt(tempNapHours) || 0, parseInt(tempNapMinutes) || 0)}
-                    mode="time"
-                    is24Hour={true}
-                    display="spinner"
-                    onChange={handleNapDurationChange}
-                  />
-                  <TouchableOpacity
-                    style={styles.modalButton}
-                    onPress={saveNapDuration}
-                  >
-                    <Text style={styles.modalButtonText}>Done</Text>
-                  </TouchableOpacity>
-                </View>
-              </View>
-            </Modal>
-          )}
+          <DurationPicker
+            title="Set Nap Duration"
+            visible={showNapDurationPicker}
+            onClose={() => setShowNapDurationPicker(false)}
+            value={{ 
+              hours: parseInt(tempNapHours) || 0, 
+              minutes: parseInt(tempNapMinutes) || 0 
+            }}
+            onChange={handleNapDurationChange}
+            maxHours={24}
+            minuteStep={5}
+          />
         </>
       )}
 
@@ -496,24 +441,36 @@ export const Clock: React.FC = () => {
         />
       )}
 
-      {Platform.OS === 'android' && showWarningPicker && (
-        <DateTimePicker
-          value={new Date(0, 0, 0, 0, schedule.warningTime)}
-          mode="time"
-          is24Hour={false}
-          display="default"
-          onChange={handleWarningTimeChange}
-        />
-      )}
+      {/* Use custom duration pickers for Android too */}
+      {Platform.OS === 'android' && (
+        <>
+          <DurationPicker
+            title="Set Warning Time"
+            visible={showWarningDurationPicker}
+            onClose={() => setShowWarningDurationPicker(false)}
+            value={{ 
+              hours: Math.floor(schedule.warningTime / 60), 
+              minutes: schedule.warningTime % 60 
+            }}
+            onChange={handleWarningTimeChange}
+            showHours={false}
+            maxMinutes={60}
+            minuteStep={1}
+          />
 
-      {Platform.OS === 'android' && showNapDurationPicker && (
-        <DateTimePicker
-          value={new Date(0, 0, 0, parseInt(napHours) || 0, parseInt(napMinutes) || 0)}
-          mode="time"
-          is24Hour={true}
-          display="default"
-          onChange={handleNapDurationChange}
-        />
+          <DurationPicker
+            title="Set Nap Duration"
+            visible={showNapDurationPicker}
+            onClose={() => setShowNapDurationPicker(false)}
+            value={{ 
+              hours: parseInt(tempNapHours) || 0, 
+              minutes: parseInt(tempNapMinutes) || 0 
+            }}
+            onChange={handleNapDurationChange}
+            maxHours={24}
+            minuteStep={5}
+          />
+        </>
       )}
     </SafeAreaView>
   );
@@ -522,7 +479,7 @@ export const Clock: React.FC = () => {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#000',
+    backgroundColor: '#000000',
   },
   container: {
     flex: 1,
@@ -565,7 +522,7 @@ const styles = StyleSheet.create({
     right: 0,
     backgroundColor: 'rgba(0, 0, 0, 0.85)',
     padding: 20,
-    paddingBottom: Platform.OS === 'ios' ? 40 : 20,
+    paddingBottom: Platform.OS === 'ios' ? 50 : 30, // Extra padding at bottom to avoid home indicator
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
     alignItems: 'stretch',
@@ -675,14 +632,5 @@ const styles = StyleSheet.create({
     color: '#f0f0f0',
     fontSize: 14,
     marginTop: 5,
-  },
-  napDurationLabel: {
-    fontSize: 18,
-    marginBottom: 5,
-  },
-  napEndTimeModalText: {
-    fontSize: 16,
-    color: '#666',
-    marginBottom: 15,
   },
 }); 
