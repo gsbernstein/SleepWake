@@ -22,7 +22,6 @@ import { useClock } from '../hooks/useClock';
 import { useSchedule } from '../context/ScheduleContext';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { format, parse, differenceInMinutes, differenceInHours, addMinutes } from 'date-fns';
-import { DurationPicker } from './DurationPicker';
 import { NativeDurationPicker } from './NativeDurationPicker';
 
 const NIGHT_LIGHT_COLORS = [
