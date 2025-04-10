@@ -15,7 +15,7 @@ const defaultSchedule: Schedule = {
   quietTime: 15,
   isNightLight: false,
   nightLightColor: '#8A2BE2',
-  napDuration: 0, // in minutes
+  napDuration: 180, // 3 hours in minutes
 };
 
 const ScheduleContext = createContext<ScheduleContextType | undefined>(undefined);

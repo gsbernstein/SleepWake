@@ -52,9 +52,9 @@ export const Clock: React.FC = () => {
   const [showTimePicker, setShowTimePicker] = useState<'bedtime' | 'waketime' | null>(null);
   const [showQuietTimeDurationPicker, setShowQuietTimeDurationPicker] = useState(false);
   const [showNapDurationPicker, setShowNapDurationPicker] = useState(false);
-  const [napHours, setNapHours] = useState('0');
+  const [napHours, setNapHours] = useState('3');
   const [napMinutes, setNapMinutes] = useState('0');
-  const [tempNapHours, setTempNapHours] = useState('0');
+  const [tempNapHours, setTempNapHours] = useState('3');
   const [tempNapMinutes, setTempNapMinutes] = useState('0');
   const [showSettings, setShowSettings] = useState(false);
   const slideAnim = useState(new RNAnimated.Value(height))[0];
