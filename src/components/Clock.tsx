@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, useWindowDimensions, TouchableOpacity, Switch, Platform, TextInput } from 'react-native';
+import { View, Text, StyleSheet, useWindowDimensions, TouchableOpacity, Switch, Platform, TextInput, Modal } from 'react-native';
 import Animated, { useAnimatedStyle } from 'react-native-reanimated';
 import { useClock } from '../hooks/useClock';
 import { useSchedule } from '../context/ScheduleContext';
@@ -24,7 +24,7 @@ const STATUS_COLORS = {
 
 export const Clock: React.FC = () => {
   const { schedule, updateSchedule } = useSchedule();
-  const { formattedTime, status, isNapActive, startNap, cancelNap } = useClock(schedule);
+  const { displayTime, status, isNapActive, startNap, cancelNap } = useClock(schedule);
   const { width, height } = useWindowDimensions();
   const [showTimePicker, setShowTimePicker] = useState<'bedtime' | 'waketime' | null>(null);
   const [showWarningPicker, setShowWarningPicker] = useState(false);
@@ -41,6 +41,11 @@ export const Clock: React.FC = () => {
   });
 
   const handleTimeChange = (event: any, selectedDate?: Date) => {
+    if (Platform.OS === 'android') {
+      setShowTimePicker(null);
+      setShowWarningPicker(false);
+    }
+    
     if (selectedDate) {
       const timeString = format(selectedDate, 'HH:mm');
       if (showTimePicker === 'bedtime') {
@@ -49,15 +54,25 @@ export const Clock: React.FC = () => {
         updateSchedule({ wakeTime: timeString });
       }
     }
-    setShowTimePicker(null);
+    
+    if (Platform.OS === 'ios') {
+      setShowTimePicker(null);
+    }
   };
 
   const handleWarningTimeChange = (event: any, selectedDate?: Date) => {
+    if (Platform.OS === 'android') {
+      setShowWarningPicker(false);
+    }
+    
     if (selectedDate) {
       const minutes = selectedDate.getMinutes();
       updateSchedule({ warningTime: minutes });
     }
-    setShowWarningPicker(false);
+    
+    if (Platform.OS === 'ios') {
+      setShowWarningPicker(false);
+    }
   };
 
   const toggleNightLight = () => {
@@ -91,7 +106,7 @@ export const Clock: React.FC = () => {
 
   return (
     <Animated.View style={[styles.container, backgroundStyle, { width, height }]}>
-      <Text style={styles.time}>{formattedTime}</Text>
+      <Text style={styles.time}>{displayTime}</Text>
       {isNapActive && <Text style={styles.napActiveText}>NAP MODE</Text>}
       
       <View style={styles.settingsContainer}>
@@ -124,16 +139,19 @@ export const Clock: React.FC = () => {
 
         <View style={styles.settingRow}>
           <Text style={styles.settingText}>Night Light</Text>
-          <Switch
-            value={schedule.isNightLight}
-            onValueChange={toggleNightLight}
-          />
-          {schedule.isNightLight && (
+          <View style={styles.nightLightControls}>
             <TouchableOpacity 
               style={[styles.colorPreview, { backgroundColor: schedule.nightLightColor }]}
               onPress={cycleNightLightColor}
             />
-          )}
+            <Switch
+              value={schedule.isNightLight}
+              onValueChange={toggleNightLight}
+              trackColor={{ false: '#767577', true: '#81b0ff' }}
+              thumbColor={schedule.isNightLight ? '#f5dd4b' : '#f4f3f4'}
+              ios_backgroundColor="#3e3e3e"
+            />
+          </View>
         </View>
 
         <View style={styles.napSettings}>
@@ -145,9 +163,8 @@ export const Clock: React.FC = () => {
               value={napDuration}
               onChangeText={updateNapDuration}
               maxLength={3}
+              placeholderTextColor="#ccc"
             />
-          </View>
-          
           <TouchableOpacity 
             style={[styles.napButton, isNapActive && styles.cancelNapButton]} 
             onPress={handleNapPress}
@@ -156,10 +173,80 @@ export const Clock: React.FC = () => {
               {isNapActive ? 'Cancel Nap' : 'Start Nap'}
             </Text>
           </TouchableOpacity>
+          </View>
+          
         </View>
       </View>
 
-      {showTimePicker && Platform.OS === 'ios' && (
+      {/* iOS date picker modal */}
+      {Platform.OS === 'ios' && (
+        <>
+          {showTimePicker && (
+            <Modal
+              animationType="slide"
+              transparent={true}
+              visible={!!showTimePicker}
+            >
+              <View style={styles.modalContainer}>
+                <View style={styles.modalContent}>
+                  <Text style={styles.modalTitle}>
+                    {showTimePicker === 'bedtime' ? 'Set Sleep Time' : 'Set Wake Time'}
+                  </Text>
+                  <DateTimePicker
+                    value={parse(
+                      showTimePicker === 'bedtime' 
+                        ? schedule.bedtime
+                        : schedule.wakeTime,
+                      'HH:mm',
+                      new Date()
+                    )}
+                    mode="time"
+                    is24Hour={true}
+                    display="spinner"
+                    onChange={handleTimeChange}
+                  />
+                  <TouchableOpacity
+                    style={styles.modalButton}
+                    onPress={() => setShowTimePicker(null)}
+                  >
+                    <Text style={styles.modalButtonText}>Done</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            </Modal>
+          )}
+
+          {showWarningPicker && (
+            <Modal
+              animationType="slide"
+              transparent={true}
+              visible={showWarningPicker}
+            >
+              <View style={styles.modalContainer}>
+                <View style={styles.modalContent}>
+                  <Text style={styles.modalTitle}>Set Warning Time</Text>
+                  <DateTimePicker
+                    value={new Date(0, 0, 0, 0, schedule.warningTime)}
+                    mode="time"
+                    is24Hour={true}
+                    display="spinner"
+                    onChange={handleWarningTimeChange}
+                  />
+                  <TouchableOpacity
+                    style={styles.modalButton}
+                    onPress={() => setShowWarningPicker(false)}
+                  >
+                    <Text style={styles.modalButtonText}>Done</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            </Modal>
+          )}
+        </>
+      )}
+
+      {/* Android date pickers */}
+      {Platform.OS === 'android' && showTimePicker && (
         <DateTimePicker
           value={parse(
             showTimePicker === 'bedtime' 
@@ -170,17 +257,17 @@ export const Clock: React.FC = () => {
           )}
           mode="time"
           is24Hour={true}
-          display="spinner"
+          display="default"
           onChange={handleTimeChange}
         />
       )}
 
-      {showWarningPicker && Platform.OS === 'ios' && (
+      {Platform.OS === 'android' && showWarningPicker && (
         <DateTimePicker
           value={new Date(0, 0, 0, 0, schedule.warningTime)}
           mode="time"
           is24Hour={true}
-          display="spinner"
+          display="default"
           onChange={handleWarningTimeChange}
         />
       )}
@@ -195,7 +282,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   time: {
-    fontSize: 72,
+    fontSize: 96,
     fontWeight: 'bold',
     color: '#ffffff',
     marginBottom: 20,
@@ -211,13 +298,13 @@ const styles = StyleSheet.create({
     bottom: 40,
     left: 20,
     right: 20,
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    backgroundColor: 'rgba(0, 0, 0, 0.7)',
     padding: 20,
     borderRadius: 20,
     gap: 15,
   },
   settingButton: {
-    backgroundColor: 'rgba(255, 255, 255, 0.3)',
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
     padding: 15,
     borderRadius: 10,
     alignItems: 'center',
@@ -226,12 +313,17 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    backgroundColor: 'rgba(255, 255, 255, 0.3)',
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
     padding: 15,
     borderRadius: 10,
   },
+  nightLightControls: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
   napSettings: {
-    backgroundColor: 'rgba(255, 255, 255, 0.3)',
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
     borderRadius: 10,
     overflow: 'hidden',
   },
@@ -247,11 +339,10 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   colorPreview: {
-    width: 30,
-    height: 30,
-    borderRadius: 15,
-    marginLeft: 10,
-    borderWidth: 2,
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    borderWidth: 1,
     borderColor: '#ffffff',
   },
   napInput: {
@@ -276,5 +367,35 @@ const styles = StyleSheet.create({
     color: '#ffffff',
     fontSize: 18,
     fontWeight: 'bold',
+  },
+  modalContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+  },
+  modalContent: {
+    backgroundColor: '#fff',
+    borderRadius: 20,
+    padding: 20,
+    alignItems: 'center',
+    width: '80%',
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    marginBottom: 20,
+  },
+  modalButton: {
+    backgroundColor: '#4169E1',
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+    borderRadius: 8,
+    marginTop: 20,
+  },
+  modalButtonText: {
+    color: '#fff',
+    fontWeight: 'bold',
+    fontSize: 16,
   },
 }); 

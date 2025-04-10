@@ -77,10 +77,16 @@ export const useClock = (schedule: Schedule) => {
     setNapEndTime(null);
   };
 
+  // Format the time as HH:MM for display
+  const timeWithoutSeconds = format(currentTime, 'HH:mm');
+  // Format with seconds for internal use
+  const timeWithSeconds = format(currentTime, 'HH:mm:ss');
+
   return {
     currentTime,
     status,
-    formattedTime: format(currentTime, 'HH:mm:ss'),
+    formattedTime: timeWithSeconds,
+    displayTime: timeWithoutSeconds,
     isNapActive,
     startNap,
     cancelNap,
