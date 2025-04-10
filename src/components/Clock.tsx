@@ -1,10 +1,23 @@
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, useWindowDimensions, TouchableOpacity, Switch, Platform, TextInput, Modal } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { 
+  View, 
+  Text, 
+  StyleSheet, 
+  useWindowDimensions, 
+  TouchableOpacity, 
+  Switch, 
+  Platform, 
+  Modal, 
+  Animated as RNAnimated,
+  SafeAreaView,
+  PanResponder,
+  StatusBar
+} from 'react-native';
 import Animated, { useAnimatedStyle } from 'react-native-reanimated';
 import { useClock } from '../hooks/useClock';
 import { useSchedule } from '../context/ScheduleContext';
 import DateTimePicker from '@react-native-community/datetimepicker';
-import { format, parse } from 'date-fns';
+import { format, parse, differenceInMinutes, differenceInHours } from 'date-fns';
 
 const NIGHT_LIGHT_COLORS = [
   { name: 'Purple', value: '#8A2BE2' },
@@ -24,12 +37,60 @@ const STATUS_COLORS = {
 
 export const Clock: React.FC = () => {
   const { schedule, updateSchedule } = useSchedule();
-  const { displayTime, status, isNapActive, startNap, cancelNap } = useClock(schedule);
+  const { 
+    displayTime, 
+    status, 
+    isNapActive, 
+    startNap, 
+    cancelNap, 
+    timeUntilNextEvent,
+    nextEventType
+  } = useClock(schedule);
   const { width, height } = useWindowDimensions();
   const [showTimePicker, setShowTimePicker] = useState<'bedtime' | 'waketime' | null>(null);
   const [showWarningPicker, setShowWarningPicker] = useState(false);
-  const [napDuration, setNapDuration] = useState(schedule.napDuration.toString());
-  
+  const [showNapDurationPicker, setShowNapDurationPicker] = useState(false);
+  const [napHours, setNapHours] = useState('0');
+  const [napMinutes, setNapMinutes] = useState('0');
+  const [showSettings, setShowSettings] = useState(false);
+  const slideAnim = useState(new RNAnimated.Value(height))[0];
+
+  // Set up pan responder for swipe to dismiss settings
+  const panResponder = PanResponder.create({
+    onStartShouldSetPanResponder: () => true,
+    onPanResponderMove: (evt, gestureState) => {
+      if (gestureState.dy > 0) {
+        slideAnim.setValue(gestureState.dy);
+      }
+    },
+    onPanResponderRelease: (evt, gestureState) => {
+      if (gestureState.dy > 50) {
+        hideSettings();
+      } else {
+        RNAnimated.spring(slideAnim, {
+          toValue: 0,
+          useNativeDriver: true
+        }).start();
+      }
+    }
+  });
+
+  // Update napDuration when hours or minutes change
+  useEffect(() => {
+    const hours = parseInt(napHours) || 0;
+    const minutes = parseInt(napMinutes) || 0;
+    const totalMinutes = (hours * 60) + minutes;
+    updateSchedule({ napDuration: totalMinutes });
+  }, [napHours, napMinutes]);
+
+  // Initialize napHours and napMinutes from schedule
+  useEffect(() => {
+    const hours = Math.floor(schedule.napDuration / 60);
+    const minutes = schedule.napDuration % 60;
+    setNapHours(hours.toString());
+    setNapMinutes(minutes.toString());
+  }, []);
+
   const backgroundStyle = useAnimatedStyle(() => {
     const targetColor = schedule.isNightLight && schedule.nightLightColor
       ? schedule.nightLightColor
@@ -75,17 +136,28 @@ export const Clock: React.FC = () => {
     }
   };
 
+  const handleNapDurationChange = (event: any, selectedDate?: Date) => {
+    if (Platform.OS === 'android') {
+      setShowNapDurationPicker(false);
+    }
+    
+    if (selectedDate) {
+      const hours = selectedDate.getHours();
+      const minutes = selectedDate.getMinutes();
+      setNapHours(hours.toString());
+      setNapMinutes(minutes.toString());
+    }
+    
+    if (Platform.OS === 'ios') {
+      setShowNapDurationPicker(false);
+    }
+  };
+
   const toggleNightLight = () => {
     updateSchedule({ 
       isNightLight: !schedule.isNightLight,
       nightLightColor: schedule.nightLightColor || '#8A2BE2'
     });
-  };
-
-  const updateNapDuration = (value: string) => {
-    setNapDuration(value);
-    const duration = parseInt(value) || 0;
-    updateSchedule({ napDuration: duration });
   };
 
   const cycleNightLightColor = () => {
@@ -101,84 +173,149 @@ export const Clock: React.FC = () => {
       cancelNap();
     } else {
       startNap();
+      hideSettings();
     }
   };
 
+  const showSettingsPanel = () => {
+    setShowSettings(true);
+    RNAnimated.spring(slideAnim, {
+      toValue: 0,
+      useNativeDriver: true
+    }).start();
+  };
+
+  const hideSettings = () => {
+    RNAnimated.timing(slideAnim, {
+      toValue: height,
+      duration: 300,
+      useNativeDriver: true
+    }).start(() => setShowSettings(false));
+  };
+
+  // Format the countdown
+  const formatCountdown = () => {
+    if (!timeUntilNextEvent) return '';
+    
+    const hours = Math.floor(timeUntilNextEvent / 60);
+    const minutes = timeUntilNextEvent % 60;
+    
+    let countdownText = '';
+    if (hours > 0) {
+      countdownText += `${hours}h `;
+    }
+    countdownText += `${minutes}m`;
+    
+    return `${countdownText} until ${nextEventType === 'wake' ? 'wake up' : 'bedtime'}`;
+  };
+
   return (
-    <Animated.View style={[styles.container, backgroundStyle, { width, height }]}>
-      <Text style={styles.time}>{displayTime}</Text>
-      {isNapActive && <Text style={styles.napActiveText}>NAP MODE</Text>}
-      
-      <View style={styles.settingsContainer}>
-        <TouchableOpacity 
-          style={styles.settingButton} 
-          onPress={() => setShowTimePicker('bedtime')}
-        >
-          <Text style={styles.settingText}>
-            Sleep Time: {schedule.bedtime}
-          </Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity 
-          style={styles.settingButton} 
-          onPress={() => setShowTimePicker('waketime')}
-        >
-          <Text style={styles.settingText}>
-            Wake Time: {schedule.wakeTime}
-          </Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity 
-          style={styles.settingButton} 
-          onPress={() => setShowWarningPicker(true)}
-        >
-          <Text style={styles.settingText}>
-            Warning: {schedule.warningTime} min
-          </Text>
-        </TouchableOpacity>
-
-        <View style={styles.settingRow}>
-          <Text style={styles.settingText}>Night Light</Text>
-          <View style={styles.nightLightControls}>
-            <TouchableOpacity 
-              style={[styles.colorPreview, { backgroundColor: schedule.nightLightColor }]}
-              onPress={cycleNightLightColor}
-            />
-            <Switch
-              value={schedule.isNightLight}
-              onValueChange={toggleNightLight}
-              trackColor={{ false: '#767577', true: '#81b0ff' }}
-              thumbColor={schedule.isNightLight ? '#f5dd4b' : '#f4f3f4'}
-              ios_backgroundColor="#3e3e3e"
-            />
-          </View>
-        </View>
-
-        <View style={styles.napSettings}>
-          <View style={styles.napDurationRow}>
-            <Text style={styles.settingText}>Nap Duration (min)</Text>
-            <TextInput
-              style={styles.napInput}
-              keyboardType="numeric"
-              value={napDuration}
-              onChangeText={updateNapDuration}
-              maxLength={3}
-              placeholderTextColor="#ccc"
-            />
+    <SafeAreaView style={styles.safeArea}>
+      <StatusBar hidden />
+      <Animated.View style={[styles.container, backgroundStyle, { width, height }]}>
+        <Text style={styles.time}>{displayTime}</Text>
+        {isNapActive && <Text style={styles.napActiveText}>NAP MODE</Text>}
+        
+        {timeUntilNextEvent > 0 && (
+          <Text style={styles.countdownText}>{formatCountdown()}</Text>
+        )}
+        
+        {!showSettings && (
           <TouchableOpacity 
-            style={[styles.napButton, isNapActive && styles.cancelNapButton]} 
-            onPress={handleNapPress}
+            style={styles.settingsButton}
+            onPress={showSettingsPanel}
           >
-            <Text style={styles.napButtonText}>
-              {isNapActive ? 'Cancel Nap' : 'Start Nap'}
-            </Text>
+            <Text style={styles.settingsButtonText}>⚙️ Settings</Text>
           </TouchableOpacity>
-          </View>
-          
-        </View>
-      </View>
+        )}
+        
+        {showSettings && (
+          <RNAnimated.View 
+            style={[
+              styles.settingsContainer,
+              {
+                transform: [{ translateY: slideAnim }]
+              }
+            ]}
+            {...panResponder.panHandlers}
+          >
+            <View style={styles.dragHandle} />
+            
+            <TouchableOpacity 
+              style={styles.settingButton} 
+              onPress={() => setShowTimePicker('bedtime')}
+            >
+              <Text style={styles.settingText}>
+                Sleep Time: {schedule.bedtime}
+              </Text>
+            </TouchableOpacity>
 
-      {/* iOS date picker modal */}
+            <TouchableOpacity 
+              style={styles.settingButton} 
+              onPress={() => setShowTimePicker('waketime')}
+            >
+              <Text style={styles.settingText}>
+                Wake Time: {schedule.wakeTime}
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity 
+              style={styles.settingButton} 
+              onPress={() => setShowWarningPicker(true)}
+            >
+              <Text style={styles.settingText}>
+                Warning: {schedule.warningTime} min
+              </Text>
+            </TouchableOpacity>
+
+            <View style={styles.settingRow}>
+              <Text style={styles.settingText}>Night Light</Text>
+              <View style={styles.nightLightControls}>
+                <TouchableOpacity 
+                  style={[styles.colorPreview, { backgroundColor: schedule.nightLightColor }]}
+                  onPress={cycleNightLightColor}
+                />
+                <Switch
+                  value={schedule.isNightLight}
+                  onValueChange={toggleNightLight}
+                  trackColor={{ false: '#767577', true: '#81b0ff' }}
+                  thumbColor={schedule.isNightLight ? '#f5dd4b' : '#f4f3f4'}
+                  ios_backgroundColor="#3e3e3e"
+                />
+              </View>
+            </View>
+
+            <View style={styles.napSettings}>
+              <TouchableOpacity 
+                style={styles.settingButton}
+                onPress={() => setShowNapDurationPicker(true)}
+              >
+                <Text style={styles.settingText}>
+                  Nap Duration: {napHours}h {napMinutes}m
+                </Text>
+              </TouchableOpacity>
+              
+              <TouchableOpacity 
+                style={[styles.napButton, isNapActive && styles.cancelNapButton]} 
+                onPress={handleNapPress}
+              >
+                <Text style={styles.napButtonText}>
+                  {isNapActive ? 'Cancel Nap' : 'Start Nap'}
+                </Text>
+              </TouchableOpacity>
+            </View>
+            
+            <TouchableOpacity 
+              style={styles.closeButton}
+              onPress={hideSettings}
+            >
+              <Text style={styles.closeButtonText}>Close</Text>
+            </TouchableOpacity>
+          </RNAnimated.View>
+        )}
+      </Animated.View>
+
+      {/* iOS date picker modals */}
       {Platform.OS === 'ios' && (
         <>
           {showTimePicker && (
@@ -242,6 +379,33 @@ export const Clock: React.FC = () => {
               </View>
             </Modal>
           )}
+
+          {showNapDurationPicker && (
+            <Modal
+              animationType="slide"
+              transparent={true}
+              visible={showNapDurationPicker}
+            >
+              <View style={styles.modalContainer}>
+                <View style={styles.modalContent}>
+                  <Text style={styles.modalTitle}>Set Nap Duration</Text>
+                  <DateTimePicker
+                    value={new Date(0, 0, 0, parseInt(napHours) || 0, parseInt(napMinutes) || 0)}
+                    mode="time"
+                    is24Hour={true}
+                    display="spinner"
+                    onChange={handleNapDurationChange}
+                  />
+                  <TouchableOpacity
+                    style={styles.modalButton}
+                    onPress={() => setShowNapDurationPicker(false)}
+                  >
+                    <Text style={styles.modalButtonText}>Done</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            </Modal>
+          )}
         </>
       )}
 
@@ -271,11 +435,25 @@ export const Clock: React.FC = () => {
           onChange={handleWarningTimeChange}
         />
       )}
-    </Animated.View>
+
+      {Platform.OS === 'android' && showNapDurationPicker && (
+        <DateTimePicker
+          value={new Date(0, 0, 0, parseInt(napHours) || 0, parseInt(napMinutes) || 0)}
+          mode="time"
+          is24Hour={true}
+          display="default"
+          onChange={handleNapDurationChange}
+        />
+      )}
+    </SafeAreaView>
   );
 };
 
 const styles = StyleSheet.create({
+  safeArea: {
+    flex: 1,
+    backgroundColor: '#000',
+  },
   container: {
     flex: 1,
     justifyContent: 'center',
@@ -291,20 +469,48 @@ const styles = StyleSheet.create({
     fontSize: 24,
     fontWeight: 'bold',
     color: '#ffffff',
-    marginBottom: 40,
+    marginBottom: 10,
+  },
+  countdownText: {
+    fontSize: 18,
+    color: '#ffffff',
+    opacity: 0.8,
+    marginTop: 10,
+  },
+  settingsButton: {
+    position: 'absolute',
+    bottom: 40,
+    padding: 15,
+    borderRadius: 30,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+  },
+  settingsButtonText: {
+    color: '#ffffff',
+    fontSize: 16,
   },
   settingsContainer: {
     position: 'absolute',
-    bottom: 40,
-    left: 20,
-    right: 20,
-    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    backgroundColor: 'rgba(0, 0, 0, 0.85)',
     padding: 20,
-    borderRadius: 20,
+    paddingBottom: 40,
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    alignItems: 'stretch',
     gap: 15,
   },
+  dragHandle: {
+    width: 40,
+    height: 5,
+    backgroundColor: 'rgba(255, 255, 255, 0.5)',
+    borderRadius: 2.5,
+    alignSelf: 'center',
+    marginBottom: 15,
+  },
   settingButton: {
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    backgroundColor: 'rgba(255, 255, 255, 0.15)',
     padding: 15,
     borderRadius: 10,
     alignItems: 'center',
@@ -313,7 +519,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    backgroundColor: 'rgba(255, 255, 255, 0.15)',
     padding: 15,
     borderRadius: 10,
   },
@@ -323,15 +529,9 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   napSettings: {
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    backgroundColor: 'rgba(255, 255, 255, 0.15)',
     borderRadius: 10,
     overflow: 'hidden',
-  },
-  napDurationRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    padding: 15,
   },
   settingText: {
     color: '#ffffff',
@@ -345,20 +545,11 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#ffffff',
   },
-  napInput: {
-    backgroundColor: 'rgba(255, 255, 255, 0.3)',
-    color: '#ffffff',
-    borderRadius: 5,
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    fontSize: 18,
-    minWidth: 60,
-    textAlign: 'center',
-  },
   napButton: {
     backgroundColor: '#4169E1',
     padding: 15,
     alignItems: 'center',
+    marginTop: 1,
   },
   cancelNapButton: {
     backgroundColor: '#DC143C',
@@ -367,6 +558,18 @@ const styles = StyleSheet.create({
     color: '#ffffff',
     fontSize: 18,
     fontWeight: 'bold',
+  },
+  closeButton: {
+    backgroundColor: 'rgba(255, 255, 255, 0.15)',
+    padding: 15,
+    borderRadius: 10,
+    alignItems: 'center',
+    marginTop: 10,
+  },
+  closeButtonText: {
+    color: '#ffffff',
+    fontSize: 18,
+    fontWeight: '600',
   },
   modalContainer: {
     flex: 1,

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { format, parse, isWithinInterval, addMinutes } from 'date-fns';
+import { format, parse, isWithinInterval, addMinutes, differenceInMinutes } from 'date-fns';
 import { Schedule } from '../types/schedule';
 
 export const useClock = (schedule: Schedule) => {
@@ -7,6 +7,8 @@ export const useClock = (schedule: Schedule) => {
   const [status, setStatus] = useState<'sleep' | 'warning' | 'wake' | 'off'>('off');
   const [isNapActive, setIsNapActive] = useState(false);
   const [napEndTime, setNapEndTime] = useState<Date | null>(null);
+  const [timeUntilNextEvent, setTimeUntilNextEvent] = useState<number>(0);
+  const [nextEventType, setNextEventType] = useState<'sleep' | 'wake'>('sleep');
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -30,9 +32,21 @@ export const useClock = (schedule: Schedule) => {
       warningTime.setDate(warningTime.getDate() + 1);
     }
 
+    // Calculate time until next event
+    let nextTime: Date;
+    let eventType: 'sleep' | 'wake';
+
     // Check if we're in nap mode
     if (isNapActive && napEndTime) {
       const warningTimeForNap = addMinutes(napEndTime, -schedule.warningTime);
+      
+      // Calculate time until nap ends
+      if (now < napEndTime) {
+        setTimeUntilNextEvent(differenceInMinutes(napEndTime, now));
+        setNextEventType('wake');
+      } else {
+        setTimeUntilNextEvent(0);
+      }
       
       if (isWithinInterval(now, { start: warningTimeForNap, end: napEndTime })) {
         setStatus('warning');
@@ -49,7 +63,7 @@ export const useClock = (schedule: Schedule) => {
       return;
     }
 
-    // Regular schedule logic
+    // Regular schedule logic for status
     if (isWithinInterval(now, { start: warningTime, end: wakeTime })) {
       setStatus('warning');
     } else if (isWithinInterval(now, { start: wakeTime, end: addMinutes(wakeTime, 1) })) {
@@ -59,6 +73,26 @@ export const useClock = (schedule: Schedule) => {
     } else {
       setStatus('off');
     }
+
+    // Calculate time until next event
+    if (now < bedtime) {
+      // Next event is bedtime
+      nextTime = bedtime;
+      eventType = 'sleep';
+    } else if (now < wakeTime) {
+      // Next event is wake time
+      nextTime = wakeTime;
+      eventType = 'wake';
+    } else {
+      // Next event is tomorrow's bedtime
+      nextTime = bedtime;
+      nextTime.setDate(nextTime.getDate() + 1);
+      eventType = 'sleep';
+    }
+
+    // Set countdown time
+    setTimeUntilNextEvent(differenceInMinutes(nextTime, now));
+    setNextEventType(eventType);
   }, [schedule, currentTime, isNapActive, napEndTime]);
 
   // Function to start a nap with the configured duration
@@ -68,6 +102,8 @@ export const useClock = (schedule: Schedule) => {
       setNapEndTime(endTime);
       setIsNapActive(true);
       setStatus('sleep');
+      setTimeUntilNextEvent(schedule.napDuration);
+      setNextEventType('wake');
     }
   };
 
@@ -90,5 +126,7 @@ export const useClock = (schedule: Schedule) => {
     isNapActive,
     startNap,
     cancelNap,
+    timeUntilNextEvent,
+    nextEventType
   };
 }; 
