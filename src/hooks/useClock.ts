@@ -4,11 +4,11 @@ import { Schedule } from '../types/schedule';
 
 export const useClock = (schedule: Schedule) => {
   const [currentTime, setCurrentTime] = useState(new Date());
-  const [status, setStatus] = useState<'sleep' | 'warning' | 'wake' | 'off'>('off');
+  const [status, setStatus] = useState<'sleep' | 'quietTime' | 'wake' | 'off'>('off');
   const [isNapActive, setIsNapActive] = useState(false);
   const [napEndTime, setNapEndTime] = useState<Date | null>(null);
   const [timeUntilNextEvent, setTimeUntilNextEvent] = useState<number>(0);
-  const [nextEventType, setNextEventType] = useState<'sleep' | 'warning' | 'wake'>('sleep');
+  const [nextEventType, setNextEventType] = useState<'sleep' | 'quietTime' | 'wake'>('sleep');
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -24,27 +24,27 @@ export const useClock = (schedule: Schedule) => {
     const currentTimeStr = format(now, 'HH:mm');
     const bedtime = parse(schedule.bedtime, 'HH:mm', now);
     const wakeTime = parse(schedule.wakeTime, 'HH:mm', now);
-    const warningTimeMinutes = schedule.warningTime || 15;
-    const warningTime = addMinutes(wakeTime, -warningTimeMinutes);
+    const quietTimeMinutes = schedule.quietTime || 15;
+    const quietTime = addMinutes(wakeTime, -quietTimeMinutes);
 
     // Handle overnight schedules
     if (wakeTime < bedtime) {
       wakeTime.setDate(wakeTime.getDate() + 1);
-      warningTime.setDate(warningTime.getDate() + 1);
+      quietTime.setDate(quietTime.getDate() + 1);
     }
 
     // Calculate time until next event
     let nextTime: Date;
-    let eventType: 'sleep' | 'warning' | 'wake';
+    let eventType: 'sleep' | 'quietTime' | 'wake';
 
     // Check if we're in nap mode
     if (isNapActive && napEndTime) {
-      const warningTimeForNap = addMinutes(napEndTime, -warningTimeMinutes);
+      const quietTimeForNap = addMinutes(napEndTime, -quietTimeMinutes);
       
-      // Calculate time until nap ends or warning starts
-      if (now < warningTimeForNap) {
-        setTimeUntilNextEvent(differenceInMinutes(warningTimeForNap, now));
-        setNextEventType('warning');
+      // Calculate time until nap ends or quiet time starts
+      if (now < quietTimeForNap) {
+        setTimeUntilNextEvent(differenceInMinutes(quietTimeForNap, now));
+        setNextEventType('quietTime');
       } else if (now < napEndTime) {
         setTimeUntilNextEvent(differenceInMinutes(napEndTime, now));
         setNextEventType('wake');
@@ -52,8 +52,8 @@ export const useClock = (schedule: Schedule) => {
         setTimeUntilNextEvent(0);
       }
       
-      if (isWithinInterval(now, { start: warningTimeForNap, end: napEndTime })) {
-        setStatus('warning');
+      if (isWithinInterval(now, { start: quietTimeForNap, end: napEndTime })) {
+        setStatus('quietTime');
       } else if (now >= napEndTime) {
         setStatus('wake');
         // Auto-disable nap mode 1 minute after wake time
@@ -68,25 +68,25 @@ export const useClock = (schedule: Schedule) => {
     }
 
     // Regular schedule logic for status
-    if (isWithinInterval(now, { start: warningTime, end: wakeTime })) {
-      setStatus('warning');
+    if (isWithinInterval(now, { start: quietTime, end: wakeTime })) {
+      setStatus('quietTime');
     } else if (isWithinInterval(now, { start: wakeTime, end: addMinutes(wakeTime, 1) })) {
       setStatus('wake');
-    } else if (isWithinInterval(now, { start: bedtime, end: warningTime })) {
+    } else if (isWithinInterval(now, { start: bedtime, end: quietTime })) {
       setStatus('sleep');
     } else {
       setStatus('off');
     }
 
-    // Calculate time until next event, including warning time
+    // Calculate time until next event, including quiet time
     if (now < bedtime) {
       // Next event is bedtime
       nextTime = bedtime;
       eventType = 'sleep';
-    } else if (now < warningTime) {
-      // Next event is warning time
-      nextTime = warningTime;
-      eventType = 'warning';
+    } else if (now < quietTime) {
+      // Next event is quiet time
+      nextTime = quietTime;
+      eventType = 'quietTime';
     } else if (now < wakeTime) {
       // Next event is wake time
       nextTime = wakeTime;
@@ -107,16 +107,16 @@ export const useClock = (schedule: Schedule) => {
   const startNap = () => {
     if (schedule.napDuration > 0) {
       const endTime = addMinutes(new Date(), schedule.napDuration);
-      const warningTimeMinutes = schedule.warningTime || 15;
-      const warningTime = addMinutes(endTime, -warningTimeMinutes);
+      const quietTimeMinutes = schedule.quietTime || 15;
+      const quietTime = addMinutes(endTime, -quietTimeMinutes);
       setNapEndTime(endTime);
       setIsNapActive(true);
       setStatus('sleep');
       
-      // Set countdown to warning time first if it's more than the warning period
-      if (schedule.napDuration > warningTimeMinutes) {
-        setTimeUntilNextEvent(schedule.napDuration - warningTimeMinutes);
-        setNextEventType('warning');
+      // Set countdown to quiet time first if it's more than the quiet time period
+      if (schedule.napDuration > quietTimeMinutes) {
+        setTimeUntilNextEvent(schedule.napDuration - quietTimeMinutes);
+        setNextEventType('quietTime');
       } else {
         setTimeUntilNextEvent(schedule.napDuration);
         setNextEventType('wake');

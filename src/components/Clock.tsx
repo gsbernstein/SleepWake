@@ -29,7 +29,7 @@ const NIGHT_LIGHT_COLORS = [
 
 const STATUS_COLORS = {
   sleep: '#1a1a1a',
-  warning: '#ffd700',
+  quietTime: '#ffd700',
   wake: '#00ff00',
   off: '#000000',
 };
@@ -49,7 +49,7 @@ export const Clock: React.FC = () => {
   const { width, height } = useWindowDimensions();
   const isLandscape = width > height;
   const [showTimePicker, setShowTimePicker] = useState<'bedtime' | 'waketime' | null>(null);
-  const [showWarningDurationPicker, setShowWarningDurationPicker] = useState(false);
+  const [showQuietTimeDurationPicker, setShowQuietTimeDurationPicker] = useState(false);
   const [showNapDurationPicker, setShowNapDurationPicker] = useState(false);
   const [napHours, setNapHours] = useState('0');
   const [napMinutes, setNapMinutes] = useState('0');
@@ -149,9 +149,9 @@ export const Clock: React.FC = () => {
     }
   };
 
-  const handleWarningTimeChange = (duration: { hours: number, minutes: number }) => {
+  const handleQuietTimeChange = (duration: { hours: number, minutes: number }) => {
     const totalMinutes = (duration.hours * 60) + duration.minutes;
-    updateSchedule({ warningTime: totalMinutes });
+    updateSchedule({ quietTime: totalMinutes });
   };
 
   const handleNapDurationChange = (duration: { hours: number, minutes: number }) => {
@@ -219,8 +219,8 @@ export const Clock: React.FC = () => {
       case 'sleep':
         eventText = 'bedtime';
         break;
-      case 'warning':
-        eventText = 'warning window';
+      case 'quietTime':
+        eventText = 'quiet time';
         break;
       case 'wake':
         eventText = 'wake up';
@@ -233,10 +233,10 @@ export const Clock: React.FC = () => {
   // Format the main clock time in 12-hour format
   const displayTime12Hour = format(parse(displayTime, 'HH:mm', new Date()), 'h:mm a');
 
-  // Format warning time as hours and minutes
-  const formatWarningTime = () => {
-    const hours = Math.floor(schedule.warningTime / 60);
-    const minutes = schedule.warningTime % 60;
+  // Format quiet time as hours and minutes
+  const formatQuietTime = () => {
+    const hours = Math.floor(schedule.quietTime / 60);
+    const minutes = schedule.quietTime % 60;
     
     if (hours > 0) {
       return `${hours}h ${minutes}m`;
@@ -298,10 +298,10 @@ export const Clock: React.FC = () => {
 
             <TouchableOpacity 
               style={styles.settingButton} 
-              onPress={() => setShowWarningDurationPicker(true)}
+              onPress={() => setShowQuietTimeDurationPicker(true)}
             >
               <Text style={styles.settingText}>
-                Warning: {formatWarningTime()}
+                Quiet Time: {formatQuietTime()}
               </Text>
             </TouchableOpacity>
 
@@ -397,14 +397,14 @@ export const Clock: React.FC = () => {
 
           {/* Custom Duration Pickers */}
           <DurationPicker
-            title="Set Warning Time"
-            visible={showWarningDurationPicker}
-            onClose={() => setShowWarningDurationPicker(false)}
+            title="Set Quiet Time"
+            visible={showQuietTimeDurationPicker}
+            onClose={() => setShowQuietTimeDurationPicker(false)}
             value={{ 
-              hours: Math.floor(schedule.warningTime / 60), 
-              minutes: schedule.warningTime % 60 
+              hours: Math.floor(schedule.quietTime / 60), 
+              minutes: schedule.quietTime % 60 
             }}
-            onChange={handleWarningTimeChange}
+            onChange={handleQuietTimeChange}
             showHours={false}
             maxMinutes={60}
             minuteStep={1}
@@ -446,14 +446,14 @@ export const Clock: React.FC = () => {
       {Platform.OS === 'android' && (
         <>
           <DurationPicker
-            title="Set Warning Time"
-            visible={showWarningDurationPicker}
-            onClose={() => setShowWarningDurationPicker(false)}
+            title="Set Quiet Time"
+            visible={showQuietTimeDurationPicker}
+            onClose={() => setShowQuietTimeDurationPicker(false)}
             value={{ 
-              hours: Math.floor(schedule.warningTime / 60), 
-              minutes: schedule.warningTime % 60 
+              hours: Math.floor(schedule.quietTime / 60), 
+              minutes: schedule.quietTime % 60 
             }}
-            onChange={handleWarningTimeChange}
+            onChange={handleQuietTimeChange}
             showHours={false}
             maxMinutes={60}
             minuteStep={1}

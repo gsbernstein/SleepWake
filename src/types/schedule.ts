@@ -1,7 +1,7 @@
 export interface Schedule {
   bedtime: string; // HH:mm format
   wakeTime: string; // HH:mm format
-  warningTime: number; // minutes before wake time
+  quietTime: number; // minutes before wake time
   isNightLight: boolean;
   nightLightColor: string; // hex color code
   napDuration: number; // in minutes

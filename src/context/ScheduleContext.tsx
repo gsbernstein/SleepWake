@@ -12,7 +12,7 @@ interface ScheduleContextType {
 const defaultSchedule: Schedule = {
   bedtime: '20:00',
   wakeTime: '07:00',
-  warningTime: 15,
+  quietTime: 15,
   isNightLight: false,
   nightLightColor: '#8A2BE2',
   napDuration: 0, // in minutes
