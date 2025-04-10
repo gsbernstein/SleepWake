@@ -5,7 +5,11 @@ import { useSchedule } from '../context/ScheduleContext';
 import { useNavigation } from '@react-navigation/native';
 import { NavigationProp } from '../types/navigation';
 
-const getBackgroundColor = (status: 'sleep' | 'warning' | 'wake' | 'off') => {
+const getBackgroundColor = (status: 'sleep' | 'warning' | 'wake' | 'off', isNightLight: boolean) => {
+  if (isNightLight) {
+    return '#8A2BE2'; // Purple night light color
+  }
+  
   switch (status) {
     case 'sleep':
       return '#1a1a1a';
@@ -30,7 +34,7 @@ export const Clock: React.FC = () => {
       style={[
         styles.container,
         {
-          backgroundColor: getBackgroundColor(status),
+          backgroundColor: getBackgroundColor(status, activeSchedule?.isNightLight || false),
           width,
           height,
         },

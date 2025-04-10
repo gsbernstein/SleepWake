@@ -20,6 +20,8 @@ export const useClock = (schedule: Schedule | null) => {
       return;
     }
 
+    // If night light is enabled, we'll still show the appropriate status
+    // but the Clock component will override the background color
     const now = new Date();
     const currentTimeStr = format(now, 'HH:mm');
     const bedtime = parse(schedule.bedtime, 'HH:mm', now);

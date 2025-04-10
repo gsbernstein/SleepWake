@@ -6,7 +6,7 @@ export interface Schedule {
   warningTime: number; // minutes before wake time
   isActive: boolean;
   isNightLight: boolean;
-  nightLightColor: string;
+  nightLightColor: string; // hex color code
   isNap: boolean;
 }
 
