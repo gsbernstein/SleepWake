@@ -40,7 +40,14 @@ const STATUS_COLORS = {
 };
 
 export const Clock: React.FC = () => {
-  const { schedule, updateSchedule } = useSchedule();
+  const { 
+    schedule, 
+    updateSchedule, 
+    isNightLight, 
+    nightLightColor, 
+    setIsNightLight, 
+    setNightLightColor 
+  } = useSchedule();
   const { 
     displayTime, 
     status, 
@@ -125,12 +132,12 @@ export const Clock: React.FC = () => {
   // Update the background color based on status and night light settings
   useEffect(() => {
     const isNightTime = status === 'sleep';
-    const shouldUseNightLight = schedule.isNightLight && (isNapActive || isNightTime);
-    const targetColor = shouldUseNightLight ? schedule.nightLightColor : STATUS_COLORS[status];
+    const shouldUseNightLight = isNightLight && (isNapActive || isNightTime);
+    const targetColor = shouldUseNightLight ? nightLightColor : STATUS_COLORS[status];
     
     // Smoothly animate to the new color
     backgroundColor.value = targetColor;
-  }, [status, isNapActive, schedule.isNightLight, schedule.nightLightColor]);
+  }, [status, isNapActive, isNightLight, nightLightColor]);
 
   // Create animated style with smooth transitions
   const backgroundStyle = useAnimatedStyle(() => {
@@ -176,17 +183,14 @@ export const Clock: React.FC = () => {
   };
 
   const toggleNightLight = () => {
-    updateSchedule({ 
-      isNightLight: !schedule.isNightLight,
-      nightLightColor: schedule.nightLightColor || '#8A2BE2'
-    });
+    setIsNightLight(!isNightLight);
   };
 
   const cycleNightLightColor = () => {
-    if (schedule.isNightLight) {
-      const currentIndex = NIGHT_LIGHT_COLORS.findIndex(c => c.value === schedule.nightLightColor);
+    if (isNightLight) {
+      const currentIndex = NIGHT_LIGHT_COLORS.findIndex(c => c.value === nightLightColor);
       const nextIndex = (currentIndex + 1) % NIGHT_LIGHT_COLORS.length;
-      updateSchedule({ nightLightColor: NIGHT_LIGHT_COLORS[nextIndex].value });
+      setNightLightColor(NIGHT_LIGHT_COLORS[nextIndex].value);
     }
   };
 
@@ -327,14 +331,14 @@ export const Clock: React.FC = () => {
                 <Text style={styles.settingText}>Night Light</Text>
                 <View style={styles.nightLightControls}>
                   <TouchableOpacity 
-                    style={[styles.colorPreview, { backgroundColor: schedule.nightLightColor }]}
+                    style={[styles.colorPreview, { backgroundColor: nightLightColor }]}
                     onPress={cycleNightLightColor}
                   />
                   <Switch
-                    value={schedule.isNightLight}
+                    value={isNightLight}
                     onValueChange={toggleNightLight}
                     trackColor={{ false: '#767577', true: '#81b0ff' }}
-                    thumbColor={schedule.isNightLight ? '#f5dd4b' : '#f4f3f4'}
+                    thumbColor={isNightLight ? '#f5dd4b' : '#f4f3f4'}
                     ios_backgroundColor="#3e3e3e"
                   />
                 </View>
