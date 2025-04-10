@@ -9,7 +9,6 @@ import {
   Platform, 
   Modal, 
   Animated as RNAnimated,
-  SafeAreaView,
   PanResponder,
   StatusBar
 } from 'react-native';
@@ -247,7 +246,7 @@ export const Clock: React.FC = () => {
 
   return (
     <View style={styles.background}>
-    <SafeAreaView style={styles.safeArea}>
+    <View style={styles.safeArea}>
       <StatusBar hidden />
       <Animated.View style={[styles.container, backgroundStyle, { width, height }]}>
         <Text style={styles.time}>{displayTime12Hour}</Text>
@@ -473,7 +472,7 @@ export const Clock: React.FC = () => {
           />
         </>
       )}
-    </SafeAreaView>
+    </View>
     </View>
   );
 };
