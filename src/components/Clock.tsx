@@ -246,6 +246,7 @@ export const Clock: React.FC = () => {
   };
 
   return (
+    <View style={styles.background}>
     <SafeAreaView style={styles.safeArea}>
       <StatusBar hidden />
       <Animated.View style={[styles.container, backgroundStyle, { width, height }]}>
@@ -467,19 +468,23 @@ export const Clock: React.FC = () => {
               minutes: parseInt(tempNapMinutes) || 0 
             }}
             onChange={handleNapDurationChange}
-            maxHours={24}
+            maxHours={5}
             minuteStep={5}
           />
         </>
       )}
     </SafeAreaView>
+    </View>
   );
 };
 
 const styles = StyleSheet.create({
-  safeArea: {
+  background: {
     flex: 1,
     backgroundColor: '#000000',
+  },
+  safeArea: {
+    flex: 1,
   },
   container: {
     flex: 1,
