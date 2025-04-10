@@ -1,96 +1,65 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { Schedule, ScheduleContextType } from '../types/schedule';
+import { v4 as uuidv4 } from 'uuid';
+import { Schedule } from '../types/schedule';
+
+interface ScheduleContextType {
+  schedule: Schedule;
+  updateSchedule: (updates: Partial<Schedule>) => void;
+  resetSchedule: () => void;
+}
+
+const defaultSchedule: Schedule = {
+  bedtime: '20:00',
+  wakeTime: '07:00',
+  warningTime: 15,
+  isNightLight: false,
+  nightLightColor: '#8A2BE2',
+  napDuration: 0, // in minutes
+};
 
 const ScheduleContext = createContext<ScheduleContextType | undefined>(undefined);
 
 export const ScheduleProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [schedules, setSchedules] = useState<Schedule[]>([]);
-  const [activeSchedule, setActiveSchedule] = useState<Schedule | null>(null);
+  const [schedule, setSchedule] = useState<Schedule>(defaultSchedule);
 
   useEffect(() => {
-    loadSchedules();
+    const loadSchedule = async () => {
+      try {
+        const savedSchedule = await AsyncStorage.getItem('schedule');
+        if (savedSchedule) {
+          setSchedule(JSON.parse(savedSchedule));
+        }
+      } catch (error) {
+        console.error('Failed to load schedule:', error);
+      }
+    };
+
+    loadSchedule();
   }, []);
 
-  const loadSchedules = async () => {
-    try {
-      const storedSchedules = await AsyncStorage.getItem('schedules');
-      if (storedSchedules) {
-        const parsedSchedules = JSON.parse(storedSchedules);
-        setSchedules(parsedSchedules);
-        const active = parsedSchedules.find((s: Schedule) => s.isActive);
-        if (active) {
-          setActiveSchedule(active);
-        }
+  useEffect(() => {
+    const saveSchedule = async () => {
+      try {
+        await AsyncStorage.setItem('schedule', JSON.stringify(schedule));
+      } catch (error) {
+        console.error('Failed to save schedule:', error);
       }
-    } catch (error) {
-      console.error('Error loading schedules:', error);
-    }
-  };
-
-  const saveSchedules = async (newSchedules: Schedule[]) => {
-    try {
-      await AsyncStorage.setItem('schedules', JSON.stringify(newSchedules));
-    } catch (error) {
-      console.error('Error saving schedules:', error);
-    }
-  };
-
-  const addSchedule = (schedule: Omit<Schedule, 'id'>) => {
-    const newSchedule = {
-      ...schedule,
-      id: Date.now().toString(),
     };
-    const newSchedules = [...schedules, newSchedule];
-    setSchedules(newSchedules);
-    saveSchedules(newSchedules);
+
+    saveSchedule();
+  }, [schedule]);
+
+  const updateSchedule = (updates: Partial<Schedule>) => {
+    setSchedule(current => ({ ...current, ...updates }));
   };
 
-  const updateSchedule = (id: string, updatedSchedule: Partial<Schedule>) => {
-    const newSchedules = schedules.map(schedule =>
-      schedule.id === id ? { ...schedule, ...updatedSchedule } : schedule
-    );
-    setSchedules(newSchedules);
-    saveSchedules(newSchedules);
-    
-    if (activeSchedule?.id === id) {
-      setActiveSchedule({ ...activeSchedule, ...updatedSchedule });
-    }
-  };
-
-  const deleteSchedule = (id: string) => {
-    const newSchedules = schedules.filter(schedule => schedule.id !== id);
-    setSchedules(newSchedules);
-    saveSchedules(newSchedules);
-    
-    if (activeSchedule?.id === id) {
-      setActiveSchedule(null);
-    }
-  };
-
-  const setActiveScheduleById = (id: string | null) => {
-    if (id === null) {
-      setActiveSchedule(null);
-      return;
-    }
-    
-    const schedule = schedules.find(s => s.id === id);
-    if (schedule) {
-      setActiveSchedule(schedule);
-    }
+  const resetSchedule = () => {
+    setSchedule(defaultSchedule);
   };
 
   return (
-    <ScheduleContext.Provider
-      value={{
-        schedules,
-        addSchedule,
-        updateSchedule,
-        deleteSchedule,
-        activeSchedule,
-        setActiveSchedule: setActiveScheduleById,
-      }}
-    >
+    <ScheduleContext.Provider value={{ schedule, updateSchedule, resetSchedule }}>
       {children}
     </ScheduleContext.Provider>
   );

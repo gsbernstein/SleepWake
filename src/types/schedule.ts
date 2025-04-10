@@ -1,13 +1,10 @@
 export interface Schedule {
-  id: string;
-  name: string;
   bedtime: string; // HH:mm format
   wakeTime: string; // HH:mm format
   warningTime: number; // minutes before wake time
-  isActive: boolean;
   isNightLight: boolean;
   nightLightColor: string; // hex color code
-  isNap: boolean;
+  napDuration: number; // in minutes
 }
 
 export interface ScheduleContextType {
