@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { 
   View, 
   Text, 
@@ -7,13 +7,13 @@ import {
   TouchableOpacity, 
   Switch, 
   Platform, 
-  Modal, 
   Animated as RNAnimated,
   PanResponder,
   StatusBar,
   ScrollView,
   LayoutAnimation,
-  UIManager
+  UIManager,
+  Dimensions
 } from 'react-native';
 import Animated, { 
   useAnimatedStyle, 
@@ -24,6 +24,7 @@ import { useClock } from '../hooks/useClock';
 import { useSchedule } from '../context/ScheduleContext';
 import { format, parse, addMinutes } from 'date-fns';
 import { Picker } from '@react-native-picker/picker';
+import * as Haptics from 'expo-haptics';
 
 const NIGHT_LIGHT_COLORS = [
   { name: 'Purple', value: '#8A2BE2' },
@@ -61,13 +62,8 @@ export const Clock: React.FC = () => {
   } = useClock(schedule);
   const { width, height } = useWindowDimensions();
   const isLandscape = width > height;
-  const [showTimePicker, setShowTimePicker] = useState<'bedtime' | 'waketime' | null>(null);
-  const [showQuietTimeDurationPicker, setShowQuietTimeDurationPicker] = useState(false);
-  const [showNapDurationPicker, setShowNapDurationPicker] = useState(false);
   const [napHours, setNapHours] = useState('3');
   const [napMinutes, setNapMinutes] = useState('0');
-  const [tempNapHours, setTempNapHours] = useState('3');
-  const [tempNapMinutes, setTempNapMinutes] = useState('0');
   const [showSettings, setShowSettings] = useState(false);
   const slideAnim = useState(new RNAnimated.Value(height))[0];
 
@@ -89,10 +85,11 @@ export const Clock: React.FC = () => {
   }, []);
 
   // Toggle a picker's expanded state
-  const togglePicker = (pickerName: 'bedtime' | 'waketime' | 'quietTime' | 'napDuration' | null) => {
+  const togglePicker = useCallback((pickerName: 'bedtime' | 'waketime' | 'quietTime' | 'napDuration' | null) => {
+    Haptics.selectionAsync();
     LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
     setExpandedPicker(expandedPicker === pickerName ? null : pickerName);
-  };
+  }, [expandedPicker]);
 
   // Calculate estimated nap end time
   const napEndTime = React.useMemo(() => {
@@ -107,10 +104,10 @@ export const Clock: React.FC = () => {
   }, [napHours, napMinutes, currentTime]);
 
   // Format time to 12-hour format
-  const format12Hour = (time: string) => {
+  const format12Hour = useCallback((time: string) => {
     const date = parse(time, 'HH:mm', new Date());
     return format(date, 'h:mm a');
-  };
+  }, []);
 
   // Set up pan responder for swipe to dismiss settings
   const panResponder = PanResponder.create({
@@ -138,7 +135,7 @@ export const Clock: React.FC = () => {
     const minutes = parseInt(napMinutes) || 0;
     const totalMinutes = (hours * 60) + minutes;
     updateSchedule({ napDuration: totalMinutes });
-  }, [napHours, napMinutes]);
+  }, [napHours, napMinutes, updateSchedule]);
 
   // Initialize napHours and napMinutes from schedule
   useEffect(() => {
@@ -146,9 +143,7 @@ export const Clock: React.FC = () => {
     const minutes = schedule.napDuration % 60;
     setNapHours(hours.toString());
     setNapMinutes(minutes.toString());
-    setTempNapHours(hours.toString());
-    setTempNapMinutes(minutes.toString());
-  }, []);
+  }, [schedule.napDuration]);
 
   // Update the background color based on status and night light settings
   useEffect(() => {
@@ -158,7 +153,7 @@ export const Clock: React.FC = () => {
     
     // Smoothly animate to the new color
     backgroundColor.value = targetColor;
-  }, [status, isNapActive, isNightLight, nightLightColor]);
+  }, [status, isNapActive, isNightLight, nightLightColor, backgroundColor]);
 
   // Create animated style with smooth transitions
   const backgroundStyle = useAnimatedStyle(() => {
@@ -169,79 +164,51 @@ export const Clock: React.FC = () => {
     };
   });
 
-  const handleTimeChange = (event: any, selectedDate?: Date) => {
-    if (Platform.OS === 'android' && event.type === 'set') {
-      setShowTimePicker(null);
-      
-      if (selectedDate) {
-        const timeString = format(selectedDate, 'HH:mm');
-        if (showTimePicker === 'bedtime') {
-          updateSchedule({ bedtime: timeString });
-        } else if (showTimePicker === 'waketime') {
-          updateSchedule({ wakeTime: timeString });
-        }
-      }
-    } else if (Platform.OS === 'ios' && selectedDate) {
-      const timeString = format(selectedDate, 'HH:mm');
-      if (showTimePicker === 'bedtime') {
-        updateSchedule({ bedtime: timeString });
-      } else if (showTimePicker === 'waketime') {
-        updateSchedule({ wakeTime: timeString });
-      }
-    }
-  };
-
-  const handleQuietTimeChange = (duration: { hours: number, minutes: number }) => {
-    const totalMinutes = (duration.hours * 60) + duration.minutes;
-    updateSchedule({ quietTime: totalMinutes });
-  };
-
-  const handleNapDurationChange = (duration: { hours: number, minutes: number }) => {
-    setNapHours(duration.hours.toString());
-    setNapMinutes(duration.minutes.toString());
-    setTempNapHours(duration.hours.toString());
-    setTempNapMinutes(duration.minutes.toString());
-  };
-
-  const toggleNightLight = () => {
+  const toggleNightLight = useCallback(() => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     setIsNightLight(!isNightLight);
-  };
+  }, [isNightLight, setIsNightLight]);
 
-  const cycleNightLightColor = () => {
+  const cycleNightLightColor = useCallback(() => {
     if (isNightLight) {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
       const currentIndex = NIGHT_LIGHT_COLORS.findIndex(c => c.value === nightLightColor);
       const nextIndex = (currentIndex + 1) % NIGHT_LIGHT_COLORS.length;
       setNightLightColor(NIGHT_LIGHT_COLORS[nextIndex].value);
     }
-  };
+  }, [isNightLight, nightLightColor, setNightLightColor]);
 
-  const handleNapPress = () => {
+  const handleNapPress = useCallback(() => {
     if (isNapActive) {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
       cancelNap();
     } else {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       startNap();
       hideSettings();
     }
-  };
+  }, [isNapActive, cancelNap, startNap]);
 
-  const showSettingsPanel = () => {
+  const showSettingsPanel = useCallback(() => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     setShowSettings(true);
     RNAnimated.spring(slideAnim, {
       toValue: 0,
       useNativeDriver: true
     }).start();
-  };
+  }, [slideAnim]);
 
-  const hideSettings = () => {
+  const hideSettings = useCallback(() => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     RNAnimated.timing(slideAnim, {
       toValue: height,
       duration: 300,
       useNativeDriver: true
     }).start(() => setShowSettings(false));
-  };
+  }, [slideAnim, height]);
 
   // Format the countdown
-  const formatCountdown = () => {
+  const formatCountdown = useCallback(() => {
     if (!timeUntilNextEvent) return '';
     
     const hours = Math.floor(timeUntilNextEvent / 60);
@@ -267,13 +234,13 @@ export const Clock: React.FC = () => {
     }
     
     return `${countdownText} until ${eventText}`;
-  };
+  }, [timeUntilNextEvent, nextEventType]);
 
   // Format the main clock time in 12-hour format
   const displayTime12Hour = format(parse(displayTime, 'HH:mm', new Date()), 'h:mm a');
 
   // Format quiet time as hours and minutes
-  const formatQuietTime = () => {
+  const formatQuietTime = useCallback(() => {
     const hours = Math.floor(schedule.quietTime / 60);
     const minutes = schedule.quietTime % 60;
     
@@ -281,10 +248,10 @@ export const Clock: React.FC = () => {
       return `${hours}h ${minutes}m`;
     }
     return `${minutes}m`;
-  };
+  }, [schedule.quietTime]);
 
   // Inline time picker component
-  const renderInlineTimePicker = (type: 'bedtime' | 'waketime') => {
+  const renderInlineTimePicker = useCallback((type: 'bedtime' | 'waketime') => {
     const timeValue = parse(
       type === 'bedtime' ? schedule.bedtime : schedule.wakeTime,
       'HH:mm',
@@ -419,16 +386,19 @@ export const Clock: React.FC = () => {
         
         <TouchableOpacity
           style={styles.inlinePickerDoneButton}
-          onPress={() => togglePicker(null)}
+          onPress={() => {
+            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+            togglePicker(null);
+          }}
         >
           <Text style={styles.inlinePickerDoneButtonText}>Done</Text>
         </TouchableOpacity>
       </View>
     );
-  };
+  }, [schedule.bedtime, schedule.wakeTime, togglePicker, updateSchedule]);
   
   // Inline duration picker component
-  const renderInlineDurationPicker = (type: 'quietTime' | 'napDuration') => {
+  const renderInlineDurationPicker = useCallback((type: 'quietTime' | 'napDuration') => {
     const isQuietTime = type === 'quietTime';
     const currentValue = isQuietTime 
       ? { 
@@ -451,7 +421,6 @@ export const Clock: React.FC = () => {
         updateSchedule({ quietTime: totalMinutes });
       } else {
         setNapHours(hourValue.toString());
-        setTempNapHours(hourValue.toString());
       }
     };
     
@@ -462,7 +431,6 @@ export const Clock: React.FC = () => {
         updateSchedule({ quietTime: totalMinutes });
       } else {
         setNapMinutes(minuteValue.toString());
-        setTempNapMinutes(minuteValue.toString());
       }
     };
     
@@ -516,13 +484,16 @@ export const Clock: React.FC = () => {
         
         <TouchableOpacity
           style={styles.inlinePickerDoneButton}
-          onPress={() => togglePicker(null)}
+          onPress={() => {
+            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+            togglePicker(null);
+          }}
         >
           <Text style={styles.inlinePickerDoneButtonText}>Done</Text>
         </TouchableOpacity>
       </View>
     );
-  };
+  }, [napHours, napMinutes, schedule.quietTime, togglePicker, updateSchedule]);
 
   return (
     <View style={styles.background}>
@@ -837,14 +808,16 @@ const styles = StyleSheet.create({
     marginBottom: 5,
   },
   inlinePickerWrapper: {
-    width: '90%',
+    marginTop: 5,
+    width: 180,
     height: 180,
-    overflow: 'hidden',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   inlinePicker: {
-    width: '100%',
-    color: '#ffffff',
+    width: 150,
     height: 180,
+    position: 'absolute',
   },
   inlinePickerItem: {
     color: '#ffffff',
