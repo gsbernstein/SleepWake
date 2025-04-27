@@ -7,7 +7,6 @@ import {
   TouchableOpacity, 
   Switch, 
   Platform, 
-  Modal, 
   Animated as RNAnimated,
   PanResponder,
   StatusBar,
@@ -61,13 +60,8 @@ export const Clock: React.FC = () => {
   } = useClock(schedule);
   const { width, height } = useWindowDimensions();
   const isLandscape = width > height;
-  const [showTimePicker, setShowTimePicker] = useState<'bedtime' | 'waketime' | null>(null);
-  const [showQuietTimeDurationPicker, setShowQuietTimeDurationPicker] = useState(false);
-  const [showNapDurationPicker, setShowNapDurationPicker] = useState(false);
   const [napHours, setNapHours] = useState('3');
   const [napMinutes, setNapMinutes] = useState('0');
-  const [tempNapHours, setTempNapHours] = useState('3');
-  const [tempNapMinutes, setTempNapMinutes] = useState('0');
   const [showSettings, setShowSettings] = useState(false);
   const slideAnim = useState(new RNAnimated.Value(height))[0];
 
@@ -146,8 +140,6 @@ export const Clock: React.FC = () => {
     const minutes = schedule.napDuration % 60;
     setNapHours(hours.toString());
     setNapMinutes(minutes.toString());
-    setTempNapHours(hours.toString());
-    setTempNapMinutes(minutes.toString());
   }, []);
 
   // Update the background color based on status and night light settings
@@ -168,40 +160,6 @@ export const Clock: React.FC = () => {
       }),
     };
   });
-
-  const handleTimeChange = (event: any, selectedDate?: Date) => {
-    if (Platform.OS === 'android' && event.type === 'set') {
-      setShowTimePicker(null);
-      
-      if (selectedDate) {
-        const timeString = format(selectedDate, 'HH:mm');
-        if (showTimePicker === 'bedtime') {
-          updateSchedule({ bedtime: timeString });
-        } else if (showTimePicker === 'waketime') {
-          updateSchedule({ wakeTime: timeString });
-        }
-      }
-    } else if (Platform.OS === 'ios' && selectedDate) {
-      const timeString = format(selectedDate, 'HH:mm');
-      if (showTimePicker === 'bedtime') {
-        updateSchedule({ bedtime: timeString });
-      } else if (showTimePicker === 'waketime') {
-        updateSchedule({ wakeTime: timeString });
-      }
-    }
-  };
-
-  const handleQuietTimeChange = (duration: { hours: number, minutes: number }) => {
-    const totalMinutes = (duration.hours * 60) + duration.minutes;
-    updateSchedule({ quietTime: totalMinutes });
-  };
-
-  const handleNapDurationChange = (duration: { hours: number, minutes: number }) => {
-    setNapHours(duration.hours.toString());
-    setNapMinutes(duration.minutes.toString());
-    setTempNapHours(duration.hours.toString());
-    setTempNapMinutes(duration.minutes.toString());
-  };
 
   const toggleNightLight = () => {
     setIsNightLight(!isNightLight);
@@ -451,7 +409,6 @@ export const Clock: React.FC = () => {
         updateSchedule({ quietTime: totalMinutes });
       } else {
         setNapHours(hourValue.toString());
-        setTempNapHours(hourValue.toString());
       }
     };
     
@@ -462,7 +419,6 @@ export const Clock: React.FC = () => {
         updateSchedule({ quietTime: totalMinutes });
       } else {
         setNapMinutes(minuteValue.toString());
-        setTempNapMinutes(minuteValue.toString());
       }
     };
     
