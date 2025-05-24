@@ -16,13 +16,20 @@ import { useClock } from '../hooks/useClock';
 import { useSchedule } from '../context/ScheduleContext';
 import { format, parse } from 'date-fns';
 import { SettingsPanel } from './SettingsPanel';
+import { EventType, Status } from '../hooks/useClock';
 
-const STATUS_COLORS = {
+const STATUS_COLORS: Record<Status, string> = {
   sleep: '#1a1a1a',
   quietTime: '#ffd700',
   wake: '#00ff00',
   off: '#000000',
 };
+
+const nextEventDescripton: Record<EventType, string> = {
+    sleep: 'bedtime',
+    quietTime: 'quiet time',
+    wake: 'wake up',
+}
 
 export const Clock: React.FC = () => {
   const { 
@@ -87,21 +94,8 @@ export const Clock: React.FC = () => {
     }
     countdownText += `${minutes}m`;
     
-    let eventText = '';
-    switch (nextEventType) {
-      case 'sleep':
-        eventText = 'bedtime';
-        break;
-      case 'quietTime':
-        eventText = 'quiet time';
-        break;
-      case 'wake':
-        eventText = 'wake up';
-        break;
-    }
-    
-    return `${countdownText} until ${eventText}`;
-  };
+    return `${countdownText} until ${nextEventDescripton[nextEventType]}`;
+  }
 
   // Format the main clock time in 12-hour format
   const displayTime12Hour = format(parse(displayTime, 'HH:mm', new Date()), 'h:mm a');

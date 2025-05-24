@@ -2,13 +2,16 @@ import { useState, useEffect } from 'react';
 import { format, parse, isWithinInterval, addMinutes, differenceInMinutes } from 'date-fns';
 import { Schedule } from '../types/schedule';
 
+export type EventType = 'sleep' | 'quietTime' | 'wake';
+export type Status = EventType | 'off';
+
 export const useClock = (schedule: Schedule) => {
   const [currentTime, setCurrentTime] = useState(new Date());
-  const [status, setStatus] = useState<'sleep' | 'quietTime' | 'wake' | 'off'>('off');
+  const [status, setStatus] = useState<Status>('off');
   const [isNapActive, setIsNapActive] = useState(false);
   const [napEndTime, setNapEndTime] = useState<Date | null>(null);
   const [timeUntilNextEvent, setTimeUntilNextEvent] = useState<number>(0);
-  const [nextEventType, setNextEventType] = useState<'sleep' | 'quietTime' | 'wake'>('sleep');
+  const [nextEventType, setNextEventType] = useState<EventType>('sleep');
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -35,7 +38,7 @@ export const useClock = (schedule: Schedule) => {
 
     // Calculate time until next event
     let nextTime: Date;
-    let eventType: 'sleep' | 'quietTime' | 'wake';
+    let eventType: EventType;
 
     // Check if we're in nap mode
     if (isNapActive && napEndTime) {
