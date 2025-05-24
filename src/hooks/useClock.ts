@@ -1,17 +1,21 @@
 import { useState, useEffect } from 'react';
-import { format, parse, isWithinInterval, addMinutes, differenceInMinutes } from 'date-fns';
+import { format, isWithinInterval, addMinutes } from 'date-fns';
 import { Settings } from '../types/settings';
+import { nextOccurrence } from 'utils/NextOccurrence';
+import { nextEvent } from 'utils/NextEvent';
 
-export type EventType = 'sleep' | 'quietTime' | 'wake';
-export type Status = EventType | 'off';
+export type State = 'sleep' | 'quietTime' | 'okToWake' | 'idle'; // applies to both nap and regular sleep/wake
 
 export const useClock = (settings: Settings) => {
+  
   const [currentTime, setCurrentTime] = useState(new Date());
-  const [status, setStatus] = useState<Status>('off');
   const [isNapActive, setIsNapActive] = useState(false);
   const [napEndTime, setNapEndTime] = useState<Date | null>(null);
-  const [timeUntilNextEvent, setTimeUntilNextEvent] = useState<number>(0);
-  const [nextEventType, setNextEventType] = useState<EventType>('sleep');
+  
+  const { currentState: initialState, nextEvent: initialNextEvent, nextEventTime: initialNextEventTime } = initialState(new Date(), settings);
+  const [state, setState] = useState<State>(initialState);
+  const [nextEvent, setNextEvent] = useState<State>(initialNextEvent);
+  const [nextEventTime, setNextEventTime] = useState<Date | null>(initialNextEventTime);
 
   // Update the current time every second
   useEffect(() => {
@@ -25,20 +29,17 @@ export const useClock = (settings: Settings) => {
   useEffect(() => {
     // Handle normal sleep/wake schedule
     const now = new Date();
-    const bedtime = parse(settings.bedtime, 'HH:mm', now);
-    const wakeTime = parse(settings.wakeTime, 'HH:mm', now);
+    const bedtime = nextOccurrence(now, settings.bedtime);
+    const wakeTime = nextOccurrence(now, settings.wakeTime);
+    
+    // TODO: cache upcoming events
+    
     const quietTimeMinutes = settings.quietTime;
-    const quietTime = addMinutes(wakeTime, -quietTimeMinutes);
-
-    // Handle overnight schedules
-    if (wakeTime < bedtime) {
-      wakeTime.setDate(wakeTime.getDate() + 1);
-      quietTime.setDate(quietTime.getDate() + 1);
-    }
+    const quietTimeTime = addMinutes(wakeTime, -quietTimeMinutes);
 
     // Calculate time until next event
     let nextTime: Date;
-    let eventType: EventType;
+    let nextEvent: EventType;
 
     // Check if we're in nap mode
     if (isNapActive && napEndTime) {
@@ -46,14 +47,12 @@ export const useClock = (settings: Settings) => {
       
       // Calculate time until nap ends or quiet time starts
       if (now < quietTimeForNap) {
-        setTimeUntilNextEvent(differenceInMinutes(quietTimeForNap, now));
-        setNextEventType('quietTime');
+        nextTime = quietTimeForNap;
+        nextEvent = 'quietTime';
       } else if (now < napEndTime) {
-        setTimeUntilNextEvent(differenceInMinutes(napEndTime, now));
-        setNextEventType('wake');
+        nextTime = napEndTime;
+        nextEvent = 'okToWake';
       } else {
-        setTimeUntilNextEvent(0);
-      }
       
       if (isWithinInterval(now, { start: quietTimeForNap, end: napEndTime })) {
         setStatus('quietTime');
@@ -102,47 +101,47 @@ export const useClock = (settings: Settings) => {
     }
 
     // Set countdown time
-    setTimeUntilNextEvent(differenceInMinutes(nextTime, now));
-    setNextEventType(eventType);
+    setNextEventType(nextEventType);
   }, [settings, currentTime, isNapActive, napEndTime]);
 
   // Function to start a nap with the configured duration
   const startNap = () => {
-    const endTime = addMinutes(new Date(), settings.napDuration);
-    const quietTimeMinutes = settings.quietTime || 15;
-    setNapEndTime(endTime);
-    setIsNapActive(true);
+    if (isNapActive) { throw Error('nap already active') }
+    if (status !== 'idle') { throw Error('already asleep') }
     
-    // Set countdown to quiet time first if it's more than the quiet time period
-    if (settings.napDuration > quietTimeMinutes) {
-      setTimeUntilNextEvent(settings.napDuration - quietTimeMinutes);
-      setStatus('sleep');
-      setNextEventType('quietTime');
-    } else {
-      setTimeUntilNextEvent(settings.napDuration);
-      setStatus('quietTime');
-      setNextEventType('wake');
-    }
+    const now = new Date()
+    const napEndTime = addMinutes(now, settings.napDuration);
+    
+    if (nextEventTime && napEndTime > nextEventTime) {
+      throw Error('nap would overlap bedtime')
+    } 
+    
+    setIsNapActive(true)
+    setNapEndTime(napEndTime)
+    setNextEventTime(addMinutes());
+    setNextEventType('quietTime')
   };
 
   // Function to cancel a nap
   const cancelNap = () => {
+    if (!isNapActive) { throw Error('nap not currently enabled') }
     setIsNapActive(false);
     setNapEndTime(null);
+    setNextEventTime(null);
+    setNextEventType(null);
   };
 
   // Format the time as HH:MM for display
-  const timeWithoutSeconds = format(currentTime, 'HH:mm');
+  const displayTime = format(currentTime, 'HH:mm');
   
   return {
     currentTime,
-    status,
-    formattedTime: timeWithoutSeconds,
-    displayTime: timeWithoutSeconds,  // Keep this for code compatibility
+    state,
+    displayTime,
     isNapActive,
     startNap,
     cancelNap,
-    timeUntilNextEvent,
-    nextEventType
+    nextEventTime,
+    nextEvent
   };
 }; 
