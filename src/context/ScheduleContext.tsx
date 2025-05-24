@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { Schedule } from '../types/schedule';
+import { Schedule } from '../types/settings';
 
 // Default night light color
 const DEFAULT_NIGHT_LIGHT_COLOR = '#8A2BE2';

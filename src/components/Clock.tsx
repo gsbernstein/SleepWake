@@ -19,7 +19,7 @@ import { SettingsPanel } from './SettingsPanel';
 import { EventType, Status } from '../hooks/useClock';
 
 const STATUS_COLORS: Record<Status, string> = {
-  sleep: '#1a1a1a',
+  sleep: '#000000', // can be overridden by night light
   quietTime: '#ffd700',
   wake: '#00ff00',
   off: '#000000',
@@ -56,13 +56,12 @@ export const Clock: React.FC = () => {
 
   // Update the background color based on status and night light settings
   useEffect(() => {
-    const isNightTime = status === 'sleep';
-    const shouldUseNightLight = isNightLight && (isNapActive || isNightTime);
+    const shouldUseNightLight = isNightLight && (status === 'sleep');
     const targetColor = shouldUseNightLight ? nightLightColor : STATUS_COLORS[status];
     
     // Smoothly animate to the new color
     backgroundColor.value = targetColor;
-  }, [status, isNapActive, isNightLight, nightLightColor]);
+  }, [status, isNightLight, nightLightColor]);
 
   // Create animated style with smooth transitions
   const backgroundStyle = useAnimatedStyle(() => {
@@ -106,7 +105,6 @@ export const Clock: React.FC = () => {
         <StatusBar hidden />
         <Animated.View style={[styles.container, backgroundStyle, { width, height }]}>
           <Text style={[styles.time, isLandscape && styles.timeLandscape]}>{displayTime12Hour}</Text>
-          {isNapActive && <Text style={[styles.napActiveText, isLandscape && styles.napActiveTextLandscape]}>NAP MODE</Text>}
           
           {timeUntilNextEvent > 0 && (
             <Text style={styles.countdownText}>{formatCountdown()}</Text>
@@ -155,20 +153,11 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: '#ffffff',
     marginBottom: 20,
+    textAlign: 'center',
   },
   timeLandscape: {
     fontSize: 72,
     marginBottom: 10,
-  },
-  napActiveText: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#ffffff',
-    marginBottom: 10,
-  },
-  napActiveTextLandscape: {
-    fontSize: 20,
-    marginBottom: 5,
   },
   countdownText: {
     fontSize: 18,
