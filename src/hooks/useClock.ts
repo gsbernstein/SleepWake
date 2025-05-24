@@ -80,7 +80,7 @@ export const useClock = (settings: Settings) => {
   // Function to start a nap with the configured duration
   const startNap = () => {
     if (isNapActive) { throw Error('nap already active') }
-    if (status !== 'idle') { throw Error('already asleep') }
+    if (state !== 'idle') { throw Error('already asleep') }
     
     const now = new Date()
     const napEndTime = addMinutes(now, settings.napDuration);
