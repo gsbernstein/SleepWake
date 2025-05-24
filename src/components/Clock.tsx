@@ -12,23 +12,24 @@ import Animated, {
   withTiming,
   useSharedValue
 } from 'react-native-reanimated';
-import { useClock } from '../hooks/useClock';
-import { useSettings } from '../context/SettingsContext';
-import { format, parse } from 'date-fns';
+import { useClock } from 'hooks/useClock';
+import { useSettings } from 'context/SettingsContext';
+import { differenceInMinutes, format, parse } from 'date-fns';
 import { SettingsPanel } from './SettingsPanel';
-import { EventType, Status } from '../hooks/useClock';
+import { State } from 'hooks/useClock';
 
-const STATUS_COLORS: Record<Status, string> = {
+const STATUS_COLORS: Record<State, string> = {
   sleep: '#000000', // can be overridden by night light
   quietTime: '#ffd700',
-  wake: '#00ff00',
-  off: '#000000',
+  okToWake: '#00ff00',
+  idle: '#000000',
 };
 
-const nextEventDescripton: Record<EventType, string> = {
+const nextEventDescripton: Record<State, string> = {
     sleep: 'bedtime',
     quietTime: 'quiet time',
-    wake: 'wake up',
+    okToWake: 'wake up',
+    idle: 'idle',
 }
 
 export const Clock: React.FC = () => {
@@ -51,16 +52,16 @@ export const Clock: React.FC = () => {
   const [showSettings, setShowSettings] = useState(false);
 
   // Store background color in a shared value for smooth animations
-  const backgroundColor = useSharedValue(STATUS_COLORS.off);
+  const backgroundColor = useSharedValue(STATUS_COLORS.idle);
 
   // Update the background color based on status and night light settings
   useEffect(() => {
-    const shouldUseNightLight = isNightLight && (status === 'sleep');
-    const targetColor = shouldUseNightLight ? nightLightColor : STATUS_COLORS[status];
+    const shouldUseNightLight = isNightLight && (state === 'sleep');
+    const targetColor = shouldUseNightLight ? nightLightColor : STATUS_COLORS[state];
     
     // Smoothly animate to the new color
     backgroundColor.value = targetColor;
-  }, [status, isNightLight, nightLightColor]);
+  }, [state, isNightLight, nightLightColor]);
 
   // Create animated style with smooth transitions
   const backgroundStyle = useAnimatedStyle(() => {
@@ -79,9 +80,10 @@ export const Clock: React.FC = () => {
     setShowSettings(false);
   };
 
+  
   // Format the countdown
   const formatCountdown = () => {
-    if (!timeUntilNextEvent) return '';
+    const timeUntilNextEvent = differenceInMinutes(nextEventTime, currentTime);
     
     const hours = Math.floor(timeUntilNextEvent / 60);
     const minutes = timeUntilNextEvent % 60;
@@ -92,15 +94,12 @@ export const Clock: React.FC = () => {
     }
     countdownText += `${minutes}m`;
     
-    return `${countdownText} until ${nextEventDescripton[nextEventType]}`;
+    return `${countdownText} until ${nextEventDescripton[nextEvent]}`;
   }
 
   // Format the time as HH:MM for display
-  const displayTime = format(currentTime, 'HH:mm');
-  
-  // Format the main clock time in 12-hour format
-  const displayTime12Hour = format(parse(displayTime, 'HH:mm', new Date()), 'h:mm a');
-
+  const displayTime = format(currentTime, 'h:mm a');
+    
   return (
     <View style={styles.background}>
       <View style={styles.safeArea}>
@@ -108,9 +107,7 @@ export const Clock: React.FC = () => {
         <Animated.View style={[styles.container, backgroundStyle, { width, height }]}>
           <Text style={[styles.time, isLandscape && styles.timeLandscape]}>{displayTime}</Text>
           
-          {timeUntilNextEvent > 0 && (
-            <Text style={styles.countdownText}>{formatCountdown()}</Text>
-          )}
+          <Text style={styles.countdownText}>{formatCountdown()}</Text>
           
           {!showSettings && (
             <TouchableOpacity 
