@@ -4,7 +4,7 @@ import { nextOccurrence } from "./NextOccurrence";
 import { State } from "hooks/useClock"
 
 // only for initial state; does not account for nap
-export function initialState(now: Date, settings: Settings): {currentState: State, nextEvent: State, nextEventTime: Date} {
+export function getInitialState(now: Date, settings: Settings): {currentState: State, nextEvent: State, nextEventTime: Date} {
     const bedtimeTime = nextOccurrence(now, settings.bedtime);
     const wakeTime = nextOccurrence(now, settings.wakeTime);
     
@@ -16,8 +16,8 @@ export function initialState(now: Date, settings: Settings): {currentState: Stat
       { event: 'idle', time: idleTime }
     ]
     
-    if (settings.quietTime > 0) {
-      const quietTimeTime = addMinutes(wakeTime, -settings.quietTime);    
+    if (settings.quietTimeDuration > 0) {
+      const quietTimeTime = addMinutes(wakeTime, -settings.quietTimeDuration);    
       times.push({ event: 'quietTime', time: quietTimeTime })
     }
     

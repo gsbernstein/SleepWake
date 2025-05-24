@@ -1,7 +1,7 @@
 import React, { useEffect } from 'react';
 import { SafeAreaProvider, initialWindowMetrics } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
-import { ScheduleProvider } from './src/context/ScheduleContext';
+import { SettingsProvider } from './src/context/SettingsContext';
 import { Clock } from './src/components/Clock';
 import { Platform } from 'react-native';
 import * as ScreenOrientation from 'expo-screen-orientation';
@@ -16,10 +16,10 @@ export default function App() {
 
   return (
     <SafeAreaProvider initialMetrics={initialWindowMetrics}>
-      <ScheduleProvider>
+      <SettingsProvider>
         <StatusBar hidden />
         <Clock />
-      </ScheduleProvider>
+      </SettingsProvider>
     </SafeAreaProvider>
   );
 } 

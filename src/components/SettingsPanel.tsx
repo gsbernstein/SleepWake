@@ -14,7 +14,7 @@ import {
 } from 'react-native';
 import { format, parse, addMinutes } from 'date-fns';
 import { Picker } from '@react-native-picker/picker';
-import { useSchedule } from '../context/ScheduleContext';
+import { useSettings } from '../context/SettingsContext';
 
 const NIGHT_LIGHT_COLORS = [
   { name: 'Purple', value: '#8A2BE2' },
@@ -46,13 +46,13 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
   currentTime
 }) => {
   const { 
-    schedule, 
-    updateSchedule, 
+    settings, 
+    updateSettings, 
     isNightLight, 
     nightLightColor, 
     setIsNightLight, 
     setNightLightColor 
-  } = useSchedule();
+  } = useSettings();
   
   const [napHours, setNapHours] = useState('3');
   const [napMinutes, setNapMinutes] = useState('0');
@@ -89,17 +89,17 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
     }
   }, [isVisible, height, slideAnim]);
   
-  // Initialize napHours and napMinutes from schedule on mount and when schedule.napDuration changes
+  // Initialize napHours and napMinutes from settings on mount and when settings.napDuration changes
   useEffect(() => {
-    // Only initialize on mount, ignore subsequent schedule.napDuration changes
+    // Only initialize on mount, ignore subsequent settings.napDuration changes
     if (isInitialMount.current) {
-      const hours = Math.floor(schedule.napDuration / 60);
-      const minutes = schedule.napDuration % 60;
+      const hours = Math.floor(settings.napDuration / 60);
+      const minutes = settings.napDuration % 60;
       setNapHours(hours.toString());
       setNapMinutes(minutes.toString());
       isInitialMount.current = false;
     }
-  }, [schedule.napDuration]);
+  }, [settings.napDuration]);
   
   // Update napDuration when hours or minutes change, but only if user is directly changing them
   const updateNapDuration = (hours: string, minutes: string) => {
@@ -111,8 +111,8 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
     setNapHours(hours);
     setNapMinutes(minutes);
     
-    // Then update the schedule
-    updateSchedule({ napDuration: totalMinutes });
+    // Then update the settings
+    updateSettings({ napDuration: totalMinutes });
   };
   
   // Set up pan responder for swipe to dismiss settings
@@ -182,8 +182,8 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
   
   // Format quiet time as hours and minutes
   const formatQuietTime = () => {
-    const hours = Math.floor(schedule.quietTime / 60);
-    const minutes = schedule.quietTime % 60;
+    const hours = Math.floor(settings.quietTime / 60);
+    const minutes = settings.quietTime % 60;
     
     if (hours > 0) {
       return `${hours}h ${minutes}m`;
@@ -194,7 +194,7 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
   // Inline time picker component
   const renderInlineTimePicker = (type: 'bedtime' | 'waketime') => {
     const timeValue = parse(
-      type === 'bedtime' ? schedule.bedtime : schedule.wakeTime,
+      type === 'bedtime' ? settings.bedtime : settings.wakeTime,
       'HH:mm',
       new Date()
     );
@@ -221,9 +221,9 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
       
       const timeString = format(newDate, 'HH:mm');
       if (type === 'bedtime') {
-        updateSchedule({ bedtime: timeString });
+        updateSettings({ bedtime: timeString });
       } else {
-        updateSchedule({ wakeTime: timeString });
+        updateSettings({ wakeTime: timeString });
       }
     };
     
@@ -240,9 +240,9 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
       
       const timeString = format(newDate, 'HH:mm');
       if (type === 'bedtime') {
-        updateSchedule({ bedtime: timeString });
+        updateSettings({ bedtime: timeString });
       } else {
-        updateSchedule({ wakeTime: timeString });
+        updateSettings({ wakeTime: timeString });
       }
     };
     
@@ -264,9 +264,9 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
       
       const timeString = format(newDate, 'HH:mm');
       if (type === 'bedtime') {
-        updateSchedule({ bedtime: timeString });
+        updateSettings({ bedtime: timeString });
       } else {
-        updateSchedule({ wakeTime: timeString });
+        updateSettings({ wakeTime: timeString });
       }
     };
     
@@ -340,8 +340,8 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
     const isQuietTime = type === 'quietTime';
     const currentValue = isQuietTime 
       ? { 
-          hours: Math.floor(schedule.quietTime / 60), 
-          minutes: schedule.quietTime % 60 
+          hours: Math.floor(settings.quietTime / 60), 
+          minutes: settings.quietTime % 60 
         }
       : { 
           hours: parseInt(napHours) || 0, 
@@ -356,7 +356,7 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
       const hourValue = parseInt(value);
       if (isQuietTime) {
         const totalMinutes = (hourValue * 60) + currentValue.minutes;
-        updateSchedule({ quietTime: totalMinutes });
+        updateSettings({ quietTime: totalMinutes });
       } else {
         updateNapDuration(value, napMinutes);
       }
@@ -366,7 +366,7 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
       const minuteValue = parseInt(value);
       if (isQuietTime) {
         const totalMinutes = (currentValue.hours * 60) + minuteValue;
-        updateSchedule({ quietTime: totalMinutes });
+        updateSettings({ quietTime: totalMinutes });
       } else {
         updateNapDuration(napHours, value);
       }
@@ -455,7 +455,7 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
             onPress={() => togglePicker('bedtime')}
           >
             <Text style={styles.settingText}>
-              Sleep Time: {format12Hour(schedule.bedtime)}
+              Sleep Time: {format12Hour(settings.bedtime)}
             </Text>
           </TouchableOpacity>
           {expandedPicker === 'bedtime' && renderInlineTimePicker('bedtime')}
@@ -467,7 +467,7 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
             onPress={() => togglePicker('waketime')}
           >
             <Text style={styles.settingText}>
-              Wake Time: {format12Hour(schedule.wakeTime)}
+              Wake Time: {format12Hour(settings.wakeTime)}
             </Text>
           </TouchableOpacity>
           {expandedPicker === 'waketime' && renderInlineTimePicker('waketime')}

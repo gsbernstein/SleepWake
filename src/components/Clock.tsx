@@ -13,7 +13,7 @@ import Animated, {
   useSharedValue
 } from 'react-native-reanimated';
 import { useClock } from '../hooks/useClock';
-import { useSchedule } from '../context/ScheduleContext';
+import { useSettings } from '../context/SettingsContext';
 import { format, parse } from 'date-fns';
 import { SettingsPanel } from './SettingsPanel';
 import { EventType, Status } from '../hooks/useClock';
@@ -35,18 +35,17 @@ export const Clock: React.FC = () => {
   const { 
     isNightLight, 
     nightLightColor,
-    schedule
-  } = useSchedule();
+    settings
+  } = useSettings();
   const { 
-    displayTime, 
-    status, 
+    currentTime,
+    state,
     isNapActive, 
     startNap, 
     cancelNap, 
-    timeUntilNextEvent,
-    nextEventType,
-    currentTime
-  } = useClock(schedule);
+    nextEventTime,
+    nextEvent,
+  } = useClock(settings);
   const { width, height } = useWindowDimensions();
   const isLandscape = width > height;
   const [showSettings, setShowSettings] = useState(false);
@@ -96,6 +95,9 @@ export const Clock: React.FC = () => {
     return `${countdownText} until ${nextEventDescripton[nextEventType]}`;
   }
 
+  // Format the time as HH:MM for display
+  const displayTime = format(currentTime, 'HH:mm');
+  
   // Format the main clock time in 12-hour format
   const displayTime12Hour = format(parse(displayTime, 'HH:mm', new Date()), 'h:mm a');
 
@@ -104,7 +106,7 @@ export const Clock: React.FC = () => {
       <View style={styles.safeArea}>
         <StatusBar hidden />
         <Animated.View style={[styles.container, backgroundStyle, { width, height }]}>
-          <Text style={[styles.time, isLandscape && styles.timeLandscape]}>{displayTime12Hour}</Text>
+          <Text style={[styles.time, isLandscape && styles.timeLandscape]}>{displayTime}</Text>
           
           {timeUntilNextEvent > 0 && (
             <Text style={styles.countdownText}>{formatCountdown()}</Text>

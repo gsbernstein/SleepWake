@@ -1,48 +1,51 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { Schedule } from '../types/settings';
+import { Settings } from '../types/settings';
 
 // Default night light color
-const DEFAULT_NIGHT_LIGHT_COLOR = '#8A2BE2';
+const DEFAULT_NIGHT_LIGHT_COLOR = '#953553'; // red-purple
 
-interface ScheduleContextType {
-  schedule: Schedule;
-  updateSchedule: (updates: Partial<Schedule>) => void;
-  resetSchedule: () => void;
+interface SettingsContextType {
+  settings: Settings;
+  updateSettings: (updates: Partial<Settings>) => void;
+  resetSettings: () => void;
   isNightLight: boolean;
   nightLightColor: string;
   setIsNightLight: (value: boolean) => void;
   setNightLightColor: (color: string) => void;
 }
 
-const defaultSchedule: Schedule = {
+const defaultSettings: Settings = {
   bedtime: '20:00',
   wakeTime: '07:00',
-  quietTime: 15,
+  quietTimeDuration: 15,
   napDuration: 180, // 3 hours in minutes
+  okToWakeDuration: 30,
+  nightLight: true,
+  nightLightColor: DEFAULT_NIGHT_LIGHT_COLOR,
 };
 
-const ScheduleContext = createContext<ScheduleContextType | undefined>(undefined);
+const SettingsContext = createContext<SettingsContextType | undefined>(undefined);
 
-export const ScheduleProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [schedule, setSchedule] = useState<Schedule>(defaultSchedule);
+export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const [settings, setSettings] = useState<Settings>(defaultSettings);
   const [isNightLight, setIsNightLight] = useState(false);
   const [nightLightColor, setNightLightColor] = useState(DEFAULT_NIGHT_LIGHT_COLOR);
 
-  // Load schedule and settings from AsyncStorage
+  // Load settings and settings from AsyncStorage
   useEffect(() => {
     const loadData = async () => {
       try {
-        // Load schedule
-        const savedSchedule = await AsyncStorage.getItem('schedule');
-        if (savedSchedule) {
-          const parsedSchedule = JSON.parse(savedSchedule);
+        // Load settings
+        const savedSettings = await AsyncStorage.getItem('settings');
+        if (savedSettings) {
+          const parsedSettings = JSON.parse(savedSettings);
           
           // Handle migrating from old format that included night light settings
-          const { isNightLight: oldIsNightLight, nightLightColor: oldNightLightColor, ...rest } = parsedSchedule;
+          const { isNightLight: oldIsNightLight, nightLightColor: oldNightLightColor, ...rest } = parsedSettings;
           
-          // Update schedule without night light settings
-          setSchedule(rest);
+          // Update settings without night light settings
+          setSettings(rest);
           
           // If we loaded from old format, also set the night light settings
           if (oldIsNightLight !== undefined) {
@@ -72,18 +75,18 @@ export const ScheduleProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     loadData();
   }, []);
 
-  // Save schedule to AsyncStorage
+  // Save settings to AsyncStorage
   useEffect(() => {
-    const saveSchedule = async () => {
+    const saveSettings = async () => {
       try {
-        await AsyncStorage.setItem('schedule', JSON.stringify(schedule));
+        await AsyncStorage.setItem('settings', JSON.stringify(settings));
       } catch (error) {
-        console.error('Failed to save schedule:', error);
+        console.error('Failed to save settings:', error);
       }
     };
 
-    saveSchedule();
-  }, [schedule]);
+    saveSettings();
+  }, [settings]);
 
   // Save night light settings to AsyncStorage
   useEffect(() => {
@@ -99,35 +102,35 @@ export const ScheduleProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     saveNightLightSettings();
   }, [isNightLight, nightLightColor]);
 
-  const updateSchedule = (updates: Partial<Schedule>) => {
-    setSchedule(current => ({ ...current, ...updates }));
+  const updateSettings = (updates: Partial<Settings>) => {
+    setSettings(current => ({ ...current, ...updates }));
   };
 
-  const resetSchedule = () => {
-    setSchedule(defaultSchedule);
+  const resetSettings = () => {
+    setSettings(defaultSettings);
     setIsNightLight(false);
     setNightLightColor(DEFAULT_NIGHT_LIGHT_COLOR);
   };
 
   return (
-    <ScheduleContext.Provider value={{ 
-      schedule, 
-      updateSchedule, 
-      resetSchedule,
+    <SettingsContext.Provider value={{ 
+      settings, 
+      updateSettings, 
+      resetSettings,
       isNightLight,
       nightLightColor,
       setIsNightLight,
       setNightLightColor
     }}>
       {children}
-    </ScheduleContext.Provider>
+    </SettingsContext.Provider>
   );
 };
 
-export const useSchedule = () => {
-  const context = useContext(ScheduleContext);
+export const useSettings = () => {
+  const context = useContext(SettingsContext);
   if (context === undefined) {
-    throw new Error('useSchedule must be used within a ScheduleProvider');
+    throw new Error('useSettings must be used within a SettingsProvider');
   }
   return context;
 }; 
