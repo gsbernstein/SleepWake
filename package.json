@@ -1,38 +1,7 @@
 {
   "name": "sleepwake",
-  "author": "Microsoft Corp.",
-  "homepage": "https://www.typescriptlang.org/",
   "version": "1.0.0",
-  "license": "Apache-2.0",
-  "keywords": [
-    "TypeScript",
-    "Microsoft",
-    "compiler",
-    "language",
-    "javascript"
-  ],
-  "bugs": {
-    "url": "https://github.com/microsoft/TypeScript/issues"
-  },
   "main": "node_modules/expo/AppEntry.js",
-  "typings": "./lib/typescript.d.ts",
-  "bin": {
-    "tsc": "./bin/tsc",
-    "tsserver": "./bin/tsserver"
-  },
-  "engines": {
-    "node": ">=14.17"
-  },
-  "files": [
-    "bin",
-    "lib",
-    "!lib/enu",
-    "LICENSE.txt",
-    "README.md",
-    "SECURITY.md",
-    "ThirdPartyNoticeText.txt",
-    "!**/.gitattributes"
-  ],
   "devDependencies": {
     "@babel/core": "^7.20.0",
     "@dprint/formatter": "^0.4.1",
@@ -118,7 +87,6 @@
     "node": "20.1.0",
     "npm": "8.19.4"
   },
-  "gitHead": "68cead182cc24afdc3f1ce7c8ff5853aba14b65a",
   "private": true,
   "dependencies": {
     "@react-native-async-storage/async-storage": "^1.21.0",
