@@ -34,8 +34,6 @@ const nextEventDescripton: Record<State, string> = {
 
 export const Clock: React.FC = () => {
   const { 
-    isNightLight, 
-    nightLightColor,
     settings
   } = useSettings();
   const { 
@@ -56,12 +54,15 @@ export const Clock: React.FC = () => {
 
   // Update the background color based on status and night light settings
   useEffect(() => {
+    const isNightLight = settings.nightLight;
+    const nightLightColor = settings.nightLightColor;
+    
     const shouldUseNightLight = isNightLight && (state === 'sleep');
     const targetColor = shouldUseNightLight ? nightLightColor : STATUS_COLORS[state];
     
     // Smoothly animate to the new color
     backgroundColor.value = targetColor;
-  }, [state, isNightLight, nightLightColor]);
+  }, [state, settings]);
 
   // Create animated style with smooth transitions
   const backgroundStyle = useAnimatedStyle(() => {
@@ -79,7 +80,6 @@ export const Clock: React.FC = () => {
   const hideSettings = () => {
     setShowSettings(false);
   };
-
   
   // Format the countdown
   const formatCountdown = () => {
