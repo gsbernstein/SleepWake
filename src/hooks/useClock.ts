@@ -87,17 +87,20 @@ export const useClock = (settings: Settings) => {
     
     if (nextEventTime && napEndTime > nextEventTime) {
       throw Error('nap would overlap bedtime')
-    } 
+    }
     
+    setState('sleep')
     setIsNapActive(true)
     setNapEndTime(napEndTime)
     setNextEventTime(addMinutes(now, settings.napDuration));
-    setNextEvent('quietTime')
+    const nextEvent = settings.quietTimeDuration > 0 ? 'quietTime' : 'okToWake';
+    setNextEvent(nextEvent);
   };
 
   // Function to cancel a nap
   const cancelNap = () => {
     if (!isNapActive) { throw Error('nap not currently enabled') }
+    setState('idle')
     setIsNapActive(false);
     setNapEndTime(null);
     setNextEventTime(nextOccurrence(new Date(), settings.bedtime));
