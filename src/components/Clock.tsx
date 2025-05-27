@@ -58,7 +58,7 @@ export const Clock: React.FC = () => {
     const nightLightColor = settings.nightLightColor;
     
     const shouldUseNightLight = isNightLight && (state === 'sleep');
-    const targetColor = shouldUseNightLight ? nightLightColor : STATUS_COLORS[state];
+    const targetColor = (shouldUseNightLight) ? nightLightColor : STATUS_COLORS[state || 'idle'];
     
     // Smoothly animate to the new color
     backgroundColor.value = targetColor;
@@ -83,6 +83,9 @@ export const Clock: React.FC = () => {
   
   // Format the countdown
   const formatCountdown = () => {
+    if (!nextEventTime || !nextEvent) {
+      return undefined;
+    }
     const timeUntilNextEvent = differenceInMinutes(nextEventTime, currentTime);
     
     const hours = Math.floor(timeUntilNextEvent / 60);
@@ -127,6 +130,7 @@ export const Clock: React.FC = () => {
             startNap={startNap}
             cancelNap={cancelNap}
             currentTime={currentTime}
+            state={state!}
           />
         </Animated.View>
       </View>

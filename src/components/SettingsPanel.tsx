@@ -15,6 +15,7 @@ import {
 import { format, parse, addMinutes } from 'date-fns';
 import { Picker } from '@react-native-picker/picker';
 import { useSettings } from 'context/SettingsContext';
+import { State } from 'hooks/useClock';
 
 const NIGHT_LIGHT_COLORS = [
   { name: 'Purple', value: '#8A2BE2' },
@@ -33,6 +34,7 @@ interface SettingsPanelProps {
   startNap: () => void;
   cancelNap: () => void;
   currentTime: Date;
+  state: State;
 }
 
 export const SettingsPanel: React.FC<SettingsPanelProps> = ({
@@ -43,7 +45,8 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
   isNapActive,
   startNap,
   cancelNap,
-  currentTime
+  currentTime,
+  state
 }) => {
   const { 
     settings, 
@@ -139,6 +142,10 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
   
   // Calculate estimated nap end time
   const napEndTime = React.useMemo(() => {
+    if (state === 'sleep' || state === 'quietTime') {
+      return undefined;
+    }
+    
     const hours = parseInt(napHours) || 0;
     const minutes = parseInt(napMinutes) || 0;
     const totalMinutes = (hours * 60) + minutes;
@@ -147,7 +154,7 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
     
     const endTime = addMinutes(new Date(), totalMinutes);
     return format(endTime, 'h:mm a'); // 12-hour format
-  }, [napHours, napMinutes, currentTime]);
+  }, [napHours, napMinutes, currentTime, state]);
   
   // Format time to 12-hour format
   const format12Hour = (time: string) => {
@@ -514,14 +521,14 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
           </TouchableOpacity>
           {expandedPicker === 'napDuration' && renderInlineDurationPicker('napDuration')}
           
-          <TouchableOpacity 
+          {(state !== 'sleep' && state !== 'quietTime') && <TouchableOpacity 
             style={[styles.napButton, isNapActive && styles.cancelNapButton]} 
             onPress={handleNapPress}
           >
             <Text style={styles.napButtonText}>
               {isNapActive ? 'Cancel Nap' : 'Start Nap'}
             </Text>
-          </TouchableOpacity>
+          </TouchableOpacity>}
         </View>
         
         <TouchableOpacity 

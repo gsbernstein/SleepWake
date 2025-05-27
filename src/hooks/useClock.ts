@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, memo } from 'react';
 import { format, isWithinInterval, addMinutes } from 'date-fns';
 import { Settings } from '../types/settings';
 import { nextOccurrence } from 'utils/NextOccurrence';
@@ -10,13 +10,23 @@ export const useClock = (settings: Settings) => {
   
   const [currentTime, setCurrentTime] = useState(new Date());
   const [isNapActive, setIsNapActive] = useState(false);
-  const [napEndTime, setNapEndTime] = useState<Date | null>(null);
+  const [napEndTime, setNapEndTime] = useState<Date | undefined | null>(undefined);
   
-  const { currentState: initialState, nextEvent: initialNextEvent, nextEventTime: initialNextEventTime } = getInitialState(new Date(), settings);
-  const [state, setState] = useState<State>(initialState);
-  const [nextEvent, setNextEvent] = useState<State>(initialNextEvent);
-  const [nextEventTime, setNextEventTime] = useState<Date>(initialNextEventTime);
+  const [state, setState] = useState<State | undefined>(undefined);
+  const [nextEvent, setNextEvent] = useState<State | undefined>(undefined);
+  const [nextEventTime, setNextEventTime] = useState<Date | undefined>(undefined);
 
+  useEffect(() => {
+    const { currentState: initialState, nextEvent: initialNextEvent, nextEventTime: initialNextEventTime } = getInitialState(new Date(), settings);
+    setState(initialState);
+    setNextEvent(initialNextEvent);
+    setNextEventTime(initialNextEventTime);
+    if (settings.napWakeTime && settings.napWakeTime > new Date()) {
+      setNapEndTime(settings.napWakeTime)
+      setState('sleep') // TODO: handle quiet time
+    }
+  }, [settings]);
+  
   // Update the current time every second
   useEffect(() => {
     const interval = setInterval(() => {
@@ -30,10 +40,16 @@ export const useClock = (settings: Settings) => {
     // Handle normal sleep/wake schedule
     const now = new Date();
     
-    if (now < nextEventTime) {
+    if (!nextEvent) {
+      console.log('no next event time')
+      return;
+    }
+    
+    if (nextEventTime && now < nextEventTime) {
       // do nothing
       return;
     }
+    console.log('now >= nextEventTime', now, nextEventTime)
     
     setState(nextEvent);
     
