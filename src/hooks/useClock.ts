@@ -30,11 +30,9 @@ export const useClock = (settings: Settings) => {
   
   // Update the current time every second
   useEffect(() => {
-    const interval = alignedInterval(() => {
+    return alignedInterval(() => {
       setCurrentTime(new Date());
     }, 1000);
-
-    return () => clearInterval(interval);
   }, []);
 
   useEffect(() => {
@@ -47,7 +45,7 @@ export const useClock = (settings: Settings) => {
     }
     
     if (nextEventTime && now < nextEventTime) {
-      console.log('tick', now, nextEventTime)
+      console.log('tick', now)
       // do nothing
       return;
     }
