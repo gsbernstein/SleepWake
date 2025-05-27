@@ -101,7 +101,7 @@ export const Clock: React.FC = () => {
 
   // Format the time as HH:MM for display
   const displayTime = format(currentTime, 'h:mm a');
-    
+
   return (
     <View style={styles.background}>
       <View style={styles.safeArea}>
