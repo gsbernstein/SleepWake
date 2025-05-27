@@ -21,13 +21,13 @@ export function getInitialState(now: Date, settings: Settings): {currentState: S
       times.push({ event: 'quietTime', time: quietTimeTime })
     }
     
-    const sortedTimes = times.sort((a, b) => a.time.getTime() - b.time.getTime())
+    times.sort((a, b) => a.time.getTime() - b.time.getTime())
     
-    const nextEventIndex = sortedTimes.findIndex(time => time.time > now)
+    const nextEventIndex = times.findIndex(time => time.time > now)
     const currentEventIndex = nextEventIndex - 1 // negative is intentional
     
-    const nextEventInfo = sortedTimes[nextEventIndex]
-    const currentState = sortedTimes.at(currentEventIndex)!.event
+    const nextEventInfo = times[nextEventIndex]
+    const currentState = times.at(currentEventIndex)!.event
 
     return {
       currentState: currentState,
