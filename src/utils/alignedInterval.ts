@@ -9,14 +9,11 @@ export function alignedInterval(callback: () => void, interval: number) {
     
     const now = performance.now();
     const discrepancy = now - goalTime;
-    console.log('discrepancy', discrepancy)
     weightedRecentDiscrepancy = weightedRecentDiscrepancy * 0.9 + discrepancy * 0.1;
-    console.log('weightedRecentDiscrepancy', weightedRecentDiscrepancy)
     
     goalTime = goalTime + interval;
     
     const delay = Math.max(1, goalTime - now - weightedRecentDiscrepancy); // Ensure delay is not negative
-    console.log('delay', delay)
     
     callback();
 
