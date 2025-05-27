@@ -14,10 +14,11 @@ import {
 } from 'react-native';
 import { format, parse, addMinutes } from 'date-fns';
 import { Picker } from '@react-native-picker/picker';
-import { useSettings } from 'context/SettingsContext';
+import { DEFAULT_NIGHT_LIGHT_COLOR, useSettings } from 'context/SettingsContext';
 import { State } from 'hooks/useClock';
 
 const NIGHT_LIGHT_COLORS = [
+  { name: 'Default', value: DEFAULT_NIGHT_LIGHT_COLOR },
   { name: 'Purple', value: '#8A2BE2' },
   { name: 'Blue', value: '#4169E1' },
   { name: 'Red', value: '#DC143C' },
@@ -167,11 +168,9 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
   };
   
   const cycleNightLightColor = () => {
-    if (settings.nightLight) {
-      const currentIndex = NIGHT_LIGHT_COLORS.findIndex(c => c.value === settings.nightLightColor);
-      const nextIndex = (currentIndex + 1) % NIGHT_LIGHT_COLORS.length;
-      updateSettings({ nightLightColor: NIGHT_LIGHT_COLORS[nextIndex].value });
-    }
+    const currentIndex = NIGHT_LIGHT_COLORS.findIndex(c => c.value === settings.nightLightColor);
+    const nextIndex = (currentIndex + 1) % NIGHT_LIGHT_COLORS.length;
+    updateSettings({ nightLightColor: NIGHT_LIGHT_COLORS[nextIndex].value });
   };
   
   const handleNapPress = () => {

@@ -8,6 +8,8 @@ interface SettingsContextType {
   resetSettings: () => void;
 }
 
+export const DEFAULT_NIGHT_LIGHT_COLOR = '#953553';
+
 const defaultSettings: Settings = {
   bedtime: '20:00',
   wakeTime: '07:00',
@@ -15,7 +17,7 @@ const defaultSettings: Settings = {
   napDuration: 180, // 3 hours in minutes
   okToWakeDuration: 30,
   nightLight: true,
-  nightLightColor: '#953553', // red-purple
+  nightLightColor: DEFAULT_NIGHT_LIGHT_COLOR,
 };
 
 const SettingsContext = createContext<SettingsContextType | undefined>(undefined);
