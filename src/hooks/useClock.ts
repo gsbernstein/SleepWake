@@ -3,6 +3,7 @@ import { format, isWithinInterval, addMinutes } from 'date-fns';
 import { Settings } from '../types/settings';
 import { nextOccurrence } from 'utils/NextOccurrence';
 import { getInitialState } from 'utils/GetInitialState';
+import { alignedInterval } from 'utils/alignedInterval';
 
 export type State = 'sleep' | 'quietTime' | 'okToWake' | 'idle'; // applies to both nap and regular sleep/wake
 
@@ -29,7 +30,7 @@ export const useClock = (settings: Settings) => {
   
   // Update the current time every second
   useEffect(() => {
-    const interval = setInterval(() => {
+    const interval = alignedInterval(() => {
       setCurrentTime(new Date());
     }, 1000);
 
@@ -46,6 +47,7 @@ export const useClock = (settings: Settings) => {
     }
     
     if (nextEventTime && now < nextEventTime) {
+      console.log('tick', now, nextEventTime)
       // do nothing
       return;
     }
