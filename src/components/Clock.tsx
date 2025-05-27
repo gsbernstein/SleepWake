@@ -12,11 +12,10 @@ import Animated, {
   withTiming,
   useSharedValue
 } from 'react-native-reanimated';
-import { useClock } from 'hooks/useClock';
+import { useClock, State } from 'hooks/useClock';
 import { useSettings } from 'context/SettingsContext';
 import { differenceInMinutes, format, parse } from 'date-fns';
 import { SettingsPanel } from './SettingsPanel';
-import { State } from 'hooks/useClock';
 
 const STATUS_COLORS: Record<State, string> = {
   sleep: '#000000', // can be overridden by night light
