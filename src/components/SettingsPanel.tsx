@@ -14,7 +14,7 @@ import {
 } from 'react-native';
 import { format, parse, addMinutes } from 'date-fns';
 import { Picker } from '@react-native-picker/picker';
-import { useSettings } from '../context/SettingsContext';
+import { useSettings } from 'context/SettingsContext';
 
 const NIGHT_LIGHT_COLORS = [
   { name: 'Purple', value: '#8A2BE2' },
@@ -48,10 +48,6 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
   const { 
     settings, 
     updateSettings, 
-    isNightLight, 
-    nightLightColor, 
-    setIsNightLight, 
-    setNightLightColor 
   } = useSettings();
   
   const [napHours, setNapHours] = useState('3');
@@ -160,14 +156,14 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
   };
   
   const toggleNightLight = () => {
-    setIsNightLight(!isNightLight);
+    updateSettings({ nightLight: !settings.nightLight });
   };
   
   const cycleNightLightColor = () => {
-    if (isNightLight) {
-      const currentIndex = NIGHT_LIGHT_COLORS.findIndex(c => c.value === nightLightColor);
+    if (settings.nightLight) {
+      const currentIndex = NIGHT_LIGHT_COLORS.findIndex(c => c.value === settings.nightLightColor);
       const nextIndex = (currentIndex + 1) % NIGHT_LIGHT_COLORS.length;
-      setNightLightColor(NIGHT_LIGHT_COLORS[nextIndex].value);
+      updateSettings({ nightLightColor: NIGHT_LIGHT_COLORS[nextIndex].value });
     }
   };
   
@@ -182,8 +178,8 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
   
   // Format quiet time as hours and minutes
   const formatQuietTime = () => {
-    const hours = Math.floor(settings.quietTime / 60);
-    const minutes = settings.quietTime % 60;
+    const hours = Math.floor(settings.quietTimeDuration / 60);
+    const minutes = settings.quietTimeDuration % 60;
     
     if (hours > 0) {
       return `${hours}h ${minutes}m`;
@@ -340,8 +336,8 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
     const isQuietTime = type === 'quietTime';
     const currentValue = isQuietTime 
       ? { 
-          hours: Math.floor(settings.quietTime / 60), 
-          minutes: settings.quietTime % 60 
+          hours: Math.floor(settings.quietTimeDuration / 60), 
+          minutes: settings.quietTimeDuration % 60 
         }
       : { 
           hours: parseInt(napHours) || 0, 
@@ -356,7 +352,7 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
       const hourValue = parseInt(value);
       if (isQuietTime) {
         const totalMinutes = (hourValue * 60) + currentValue.minutes;
-        updateSettings({ quietTime: totalMinutes });
+        updateSettings({ quietTimeDuration: totalMinutes });
       } else {
         updateNapDuration(value, napMinutes);
       }
@@ -366,7 +362,7 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
       const minuteValue = parseInt(value);
       if (isQuietTime) {
         const totalMinutes = (currentValue.hours * 60) + minuteValue;
-        updateSettings({ quietTime: totalMinutes });
+        updateSettings({ quietTimeDuration: totalMinutes });
       } else {
         updateNapDuration(napHours, value);
       }
@@ -489,14 +485,14 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
           <Text style={styles.settingText}>Night Light</Text>
           <View style={styles.nightLightControls}>
             <TouchableOpacity 
-              style={[styles.colorPreview, { backgroundColor: nightLightColor }]}
+              style={[styles.colorPreview, { backgroundColor: settings.nightLightColor }]}
               onPress={cycleNightLightColor}
             />
             <Switch
-              value={isNightLight}
+              value={settings.nightLight}
               onValueChange={toggleNightLight}
               trackColor={{ false: '#767577', true: '#81b0ff' }}
-              thumbColor={isNightLight ? '#f5dd4b' : '#f4f3f4'}
+              // thumbColor={settings.nightLight ? '#f5dd4b' : '#f4f3f4'}
               ios_backgroundColor="#3e3e3e"
             />
           </View>
