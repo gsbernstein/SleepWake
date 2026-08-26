@@ -10,7 +10,8 @@ import {
 import Animated, { 
   useAnimatedStyle, 
   withTiming,
-  useSharedValue
+  useSharedValue,
+  makeMutable
 } from 'react-native-reanimated';
 import { useClock, State } from 'hooks/useClock';
 import { useSettings } from 'context/SettingsContext';
@@ -49,7 +50,7 @@ export const Clock: React.FC = () => {
   const [showSettings, setShowSettings] = useState(false);
 
   // Store background color in a shared value for smooth animations
-  const backgroundColor = useSharedValue(STATUS_COLORS.idle);
+  const backgroundColor = makeMutable(STATUS_COLORS.idle);
 
   // Update the background color based on status and night light settings
   useEffect(() => {
@@ -58,6 +59,7 @@ export const Clock: React.FC = () => {
     
     const shouldUseNightLight = isNightLight && (state === 'sleep');
     const targetColor = (shouldUseNightLight) ? nightLightColor : STATUS_COLORS[state || 'idle'];
+    console.log('targetColor', targetColor)
     
     // Smoothly animate to the new color
     backgroundColor.value = targetColor;

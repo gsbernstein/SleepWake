@@ -1,0 +1,9 @@
+ - bug: background color resets after transition
+ - nit: rounded bottom corners on nap setting
+ - edge cases: 
+   - handle updating nap duration or quiet time duration in the middle of a nap (or sleep)
+   - make sure nap resumes if interrupted
+   - make sure nextEvent system handles long suspention
+ - new features: 
+   - way to control system background sounds?
+   - brightness slider

@@ -178,7 +178,7 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
       cancelNap();
     } else {
       startNap();
-      onClose();
+      // onClose();
     }
   };
   
@@ -451,9 +451,11 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
         nestedScrollEnabled={true}
         scrollEventThrottle={16}
       >
+        <Text style={styles.settingText}>{state}</Text>
+        
         <View>
-          <TouchableOpacity 
-            style={styles.settingButton} 
+          <TouchableOpacity
+            style={styles.settingButton}
             onPress={() => togglePicker('bedtime')}
           >
             <Text style={styles.settingText}>
@@ -520,7 +522,7 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
           </TouchableOpacity>
           {expandedPicker === 'napDuration' && renderInlineDurationPicker('napDuration')}
           
-          {(state !== 'sleep' && state !== 'quietTime') && <TouchableOpacity 
+          {(isNapActive || (state !== 'sleep' && state !== 'quietTime')) && <TouchableOpacity 
             style={[styles.napButton, isNapActive && styles.cancelNapButton]} 
             onPress={handleNapPress}
           >
